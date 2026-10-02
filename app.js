@@ -812,6 +812,15 @@ createApp({
       triggerToast(`已由地端AI完成【${currentCase.value.companyName}】之24項開戶問項審核與填表！`);
     }
 
+    function setQ(list, id, patch) {
+      const q = list.find(item => item.id === id);
+      if (q) Object.assign(q, patch);
+    }
+
+    function getQuestion(id) {
+      return questions.value.find(q => q.id === id) || {};
+    }
+
     function applyCaseData(caseKey) {
       if (caseKey === 'case_normal') {
         questions.value = JSON.parse(JSON.stringify(DEFAULT_QUESTIONS));
@@ -819,86 +828,110 @@ createApp({
         const qList = JSON.parse(JSON.stringify(DEFAULT_QUESTIONS));
         
         // Q1.1
-        qList[0].value = '90812377 (核准設立，但登記於商務中心)';
-        qList[0].citation = '統一編號：90812377 公司名稱：瀚亞寰宇國際生醫貿易有限公司';
-        qList[0].sourceDoc = '公司設立登記事項表';
+        setQ(qList, 'q1_1', {
+          value: '90812377 (核准設立，但登記於商務中心)',
+          citation: '統一編號：90812377 公司名稱：瀚亞寰宇國際生醫貿易有限公司',
+          sourceDoc: '公司設立登記事項表'
+        });
 
         // Q1.2
-        qList[1].status = 'pending';
-        qList[1].value = '設立僅3個月 / 資本額100萬 (新創法人警戒)';
-        qList[1].reasoning = 'AI 辨識設立日期為113年7月2日，迄今僅成立3個月，屬金管會「新設立法人（未滿半年）」監控對象；且登記資本額僅新台幣100萬元，資本充裕度較低。';
-        qList[1].citation = '核准設立日期：中華民國113年07月02日 資本總額：新臺幣 1,000,000 元';
-        qList[1].deficiencyAction = '需索取會計師設立資本查核簽證報告書與股款繳納股東存款憑證。';
+        setQ(qList, 'q1_2', {
+          status: 'pending',
+          value: '設立僅3個月 / 資本額100萬 (新創法人警戒)',
+          reasoning: 'AI 辨識設立日期為113年7月2日，迄今僅成立3個月，屬金管會「新設立法人（未滿半年）」監控對象；且登記資本額僅新台幣100萬元，資本充裕度較低。',
+          citation: '核准設立日期：中華民國113年07月02日 資本總額：新臺幣 1,000,000 元',
+          deficiencyAction: '需索取會計師設立資本查核簽證報告書與股款繳納股東存款憑證。'
+        });
 
         // Q1.3
-        qList[2].status = 'pending';
-        qList[2].value = '借址登記於台中匯創商務中心 (虛擬共享桌)';
-        qList[2].reasoning = '登記地址為台中市台灣大道二段99號14樓之2，經比對為「匯創國際商務中心」多戶共用之代收秘書地址，非獨立實質營運場所，符合金管會重點防弊查核指標。';
-        qList[2].citation = '公司所在地：臺中市西區台灣大道二段99號14樓之2（匯創國際商務中心）';
-        qList[2].deficiencyAction = '需專案指派行員前往現場實地場勘，查核有無專屬辦公人員及庫房。';
+        setQ(qList, 'q1_3', {
+          status: 'pending',
+          value: '借址登記於台中匯創商務中心 (虛擬共享桌)',
+          reasoning: '登記地址為台中市台灣大道二段99號14樓之2，經比對為「匯創國際商務中心」多戶共用之代收秘書地址，非獨立實質營運場所，符合金管會重點防弊查核指標。',
+          citation: '公司所在地：臺中市西區台灣大道二段99號14樓之2（匯創國際商務中心）',
+          deficiencyAction: '需專案指派行員前往現場實地場勘，查核有無專屬辦公人員及庫房。'
+        });
 
         // Q2.3
-        qList[7].status = 'alert';
-        qList[7].value = '境外法人股東持股40%未穿透自然人 (UBO未明)';
-        qList[7].reasoning = '法人股東 GLORY APEX HOLDINGS LTD. (BVI) 持有40%股權，大於法定25%穿透門檻。但全案卷宗未附該BVI公司之股東名冊、董事名冊或職權證明書，無法穿透識別最終自然人，依法不得核發開戶。';
-        qList[7].citation = 'GLORY APEX HOLDINGS LTD. (英屬維京群島 BVI 註冊)（出資額 400,000 元，佔 40%）';
-        qList[7].deficiencyAction = '【重大缺失】開立照會單，要求補送經公認證之境外公司 Certificate of Incumbency 及 UBO 自然人身分證件。';
+        setQ(qList, 'q2_3', {
+          status: 'alert',
+          value: '境外法人股東持股40%未穿透自然人 (UBO未明)',
+          reasoning: '法人股東 GLORY APEX HOLDINGS LTD. (BVI) 持有40%股權，大於法定25%穿透門檻。但全案卷宗未附該BVI公司之股東名冊、董事名冊或職權證明書，無法穿透識別最終自然人，依法不得核發開戶。',
+          citation: 'GLORY APEX HOLDINGS LTD. (英屬維京群島 BVI 註冊)（出資額 400,000 元，佔 40%）',
+          deficiencyAction: '【重大缺失】開立照會單，要求補送經公認證之境外公司 Certificate of Incumbency 及 UBO 自然人身分證件。'
+        });
 
         // Q4.2
-        qList[13].status = 'alert';
-        qList[13].value = '無地緣關係（營業在台中，跨區至台北南京東路開戶）';
-        qList[13].reasoning = '公司登記於台中市西區，卻親赴台北市南京東路分行申辦開戶，兩地相距逾160公里，且申請書未載明合理解釋（如台北大客戶指定或關係企業集中管理），具跨區開戶洗錢紅旗警訊。';
-        qList[13].citation = '所在地：臺中市西區台灣大道 申請分行：台北南京東路分行（相距160公里）';
-        qList[13].deficiencyAction = '請負責人填具「跨區開戶合理原因說明書」，並需分行經理專案核准。';
+        setQ(qList, 'q4_2', {
+          status: 'alert',
+          value: '無地緣關係（營業在台中，跨區至台北南京東路開戶）',
+          reasoning: '公司登記於台中市西區，卻親赴台北市南京東路分行申辦開戶，兩地相距逾160公里，且申請書未載明合理解釋（如台北大客戶指定或關係企業集中管理），具跨區開戶洗錢紅旗警訊。',
+          citation: '所在地：臺中市西區台灣大道 申請分行：台北南京東路分行（相距160公里）',
+          deficiencyAction: '請負責人填具「跨區開戶合理原因說明書」，並需分行經理專案核准。'
+        });
 
         // Q4.3
-        qList[14].status = 'alert';
-        qList[14].value = '預期月匯出入8,000萬，與100萬資本額差距80倍';
-        qList[14].reasoning = '申請書載明預估每月進出口外匯交易金額達新台幣8,000萬元，而公司資本額僅100萬元，兩者落差高達80倍，極度不相稱，有借名洗錢轉匯之嫌疑。';
-        qList[14].citation = '預估每月交易額美金 2,500,000 元（約合新台幣 8,000 萬元）資本額 1,000,000 元';
-        qList[14].deficiencyAction = '需徵提具法律約束力之大額正式商業採購訂單及信用狀 (L/C) 憑證。';
+        setQ(qList, 'q4_3', {
+          status: 'alert',
+          value: '預期月匯出入8,000萬，與100萬資本額差距80倍',
+          reasoning: '申請書載明預估每月進出口外匯交易金額達新台幣8,000萬元，而公司資本額僅100萬元，兩者落差高達80倍，極度不相稱，有借名洗錢轉匯之嫌疑。',
+          citation: '預估每月交易額美金 2,500,000 元（約合新台幣 8,000 萬元）資本額 1,000,000 元',
+          deficiencyAction: '需徵提具法律約束力之大額正式商業採購訂單及信用狀 (L/C) 憑證。'
+        });
 
         // Q5.1
-        qList[16].status = 'pending';
-        qList[16].value = '未檢附營業稅401申報書（缺漏件）';
-        qList[16].reasoning = '因甫設立未滿三個月，尚未向國稅局完成第一期401表營業稅申報，無法佐證其實際銷貨營業額。';
-        qList[16].citation = '【未檢附缺失】現場未能提供會計師設立資本查核簽證報告書及任何發票存根';
-        qList[16].deficiencyAction = '要求提供近三個月銀行存摺金流往來明細或會計師設立資本查核報告書。';
+        setQ(qList, 'q5_1', {
+          status: 'pending',
+          value: '未檢附營業稅401申報書（缺漏件）',
+          reasoning: '因甫設立未滿三個月，尚未向國稅局完成第一期401表營業稅申報，無法佐證其實際銷貨營業額。',
+          citation: '【未檢附缺失】現場未能提供會計師設立資本查核簽證報告書及任何發票存根',
+          deficiencyAction: '要求提供近三個月銀行存摺金流往來明細或會計師設立資本查核報告書。'
+        });
 
         // Q5.3
-        qList[18].status = 'pending';
-        qList[18].value = '僅有意向預約書，缺正式租賃合約與水電單據';
-        qList[18].reasoning = '僅提供商務中心進駐預約單草約，未正式用印簽約，亦無押租金匯款憑單及自來水、台電公用事業帳單。';
-        qList[18].citation = '提交文件：匯創國際商務中心進駐意向預約書（尚未正式簽約，無押金憑證）';
-        qList[18].deficiencyAction = '補送正式租賃契約書完稅影本與近一期租金轉帳水單。';
+        setQ(qList, 'q5_3', {
+          status: 'pending',
+          value: '僅有意向預約書，缺正式租賃合約與水電單據',
+          reasoning: '僅提供商務中心進駐預約單草約，未正式用印簽約，亦無押租金匯款憑單及自來水、台電公用事業帳單。',
+          citation: '提交文件：匯創國際商務中心進駐意向預約書（尚未正式簽約，無押金憑證）',
+          deficiencyAction: '補送正式租賃契約書完稅影本與近一期租金轉帳水單。'
+        });
 
         // Q6.1
-        qList[20].status = 'alert';
-        qList[20].value = '中高風險 (Medium-High Risk - 觸發多項紅旗)';
-        qList[20].reasoning = '觸發三大紅旗警訊：(1) UBO穿透受阻未明 (2) 跨區無地緣開戶 (3) 資本額與預期交易量極度不相稱。整體洗錢風險高於常態。';
-        qList[20].citation = '綜合警示評定：中高風險（觸發洗錢防制監控指標第4、7、12條）';
-        qList[20].deficiencyAction = '暫緩放行，進入缺失補正程序。';
+        setQ(qList, 'q6_1', {
+          status: 'alert',
+          value: '中高風險 (Medium-High Risk - 觸發多項紅旗)',
+          reasoning: '觸發三大紅旗警訊：(1) UBO穿透受阻未明 (2) 跨區無地緣開戶 (3) 資本額與預期交易量極度不相稱。整體洗錢風險高於常態。',
+          citation: '綜合警示評定：中高風險（觸發洗錢防制監控指標第4、7、12條）',
+          deficiencyAction: '暫緩放行，進入缺失補正程序。'
+        });
 
         // Q6.2
-        qList[21].status = 'alert';
-        qList[21].value = '需強制啟動加強客戶審查 (EDD)';
-        qList[21].reasoning = '依本行AML作業準則第15條，具境外控股不透明架構及跨區無合理商業理由者，應自動升級為加強客戶審查 (EDD) 程序。';
-        qList[21].citation = '境外BVI控股與跨區開戶觸發 EDD 規範';
-        qList[21].deficiencyAction = '由防制洗錢專責人員調閱境外公司查核報告並行員專案複審。';
+        setQ(qList, 'q6_2', {
+          status: 'alert',
+          value: '需強制啟動加強客戶審查 (EDD)',
+          reasoning: '依本行AML作業準則第15條，具境外控股不透明架構及跨區無合理商業理由者，應自動升級為加強客戶審查 (EDD) 程序。',
+          citation: '境外BVI控股與跨區開戶觸發 EDD 規範',
+          deficiencyAction: '由防制洗錢專責人員調閱境外公司查核報告並行員專案複審。'
+        });
 
         // Q6.3
-        qList[22].status = 'pending';
-        qList[22].value = '【暫緩開戶 - 待補件照會中】';
-        qList[22].reasoning = '因實質受益人(UBO)尚未查清、跨區開戶商業理由未補正、缺乏401稅表及正式租約，現階段不得核准開戶，應開立正式照會單通知限期7日內補齊。';
-        qList[22].citation = '依規定於待補文件補正且複核合格前，系統鎖定不得開戶';
-        qList[22].deficiencyAction = '發出「企金開戶補正資料照會單」，限期7日內回覆。';
+        setQ(qList, 'q6_3', {
+          status: 'pending',
+          value: '【暫緩開戶 - 待補件照會中】',
+          reasoning: '因實質受益人(UBO)尚未查清、跨區開戶商業理由未補正、缺乏401稅表及正式租約，現階段不得核准開戶，應開立正式照會單通知限期7日內補齊。',
+          citation: '依規定於待補文件補正且複核合格前，系統鎖定不得開戶',
+          deficiencyAction: '發出「企金開戶補正資料照會單」，限期7日內回覆。'
+        });
 
         // Q6.4
-        qList[23].status = 'alert';
-        qList[23].value = '需呈報「分行經理」親簽核准，並副知總行洗錢防制部';
-        qList[23].reasoning = '跨區開戶及EDD案件超越一般襄理決行權限，依法必須由分行最高主管（分行經理）審閱實地場勘報告後親簽決行。';
-        qList[23].citation = '跨區與中高風險案件屬分行經理核決層級';
-        qList[23].deficiencyAction = '備妥審查意見簽呈送交分行經理批示。';
+        setQ(qList, 'q6_4', {
+          status: 'alert',
+          value: '需呈報「分行經理」親簽核准，並副知總行洗錢防制部',
+          reasoning: '跨區開戶及EDD案件超越一般襄理決行權限，依法必須由分行最高主管（分行經理）審閱實地場勘報告後親簽決行。',
+          citation: '跨區與中高風險案件屬分行經理核決層級',
+          deficiencyAction: '備妥審查意見簽呈送交分行經理批示。'
+        });
 
         questions.value = qList;
 
@@ -906,53 +939,67 @@ createApp({
         const qList = JSON.parse(JSON.stringify(DEFAULT_QUESTIONS));
         
         // Q1.4
-        qList[3].status = 'alert';
-        qList[3].value = '營業項目雖為軟體行銷，實質經營虛擬通貨 (VASP) 跨境金流';
-        qList[3].reasoning = '訪談紀錄與合約揭露該公司主力業務為境外加密貨幣OTC結匯及交易所推廣，且尚未向金管會完成防制洗錢遵循聲明，屬金融機構高度管制之高洗錢行業。';
-        qList[3].citation = '為境外 Web3/加密貨幣交易所提供社群推廣與大額場外交易 (OTC) 結匯引介服務';
-        qList[3].deficiencyAction = '若涉及未遵循之虛擬通貨金流，依法應予婉拒開戶。';
+        setQ(qList, 'q1_4', {
+          status: 'alert',
+          value: '營業項目雖為軟體行銷，實質經營虛擬通貨 (VASP) 跨境金流',
+          reasoning: '訪談紀錄與合約揭露該公司主力業務為境外加密貨幣OTC結匯及交易所推廣，且尚未向金管會完成防制洗錢遵循聲明，屬金融機構高度管制之高洗錢行業。',
+          citation: '為境外 Web3/加密貨幣交易所提供社群推廣與大額場外交易 (OTC) 結匯引介服務',
+          deficiencyAction: '若涉及未遵循之虛擬通貨金流，依法應予婉拒開戶。'
+        });
 
         // Q3.2
-        qList[9].status = 'alert';
-        qList[9].value = '大股東趙培倫為現任政務官親弟 (國內PEP利害關係人)';
-        qList[9].reasoning = '大股東趙培倫持股35%（UBO），經全球反洗錢系統核對，其為現任直轄市副市長趙O宇之胞弟，屬洗錢防制法規範之「重要政治性職務人士之家庭成員（二親等血親）」。';
-        qList[9].citation = 'PEP 檢索命中：趙培倫為現任直轄市副市長之親胞弟，符合洗錢防制法二親等血親規定';
-        qList[9].deficiencyAction = '需調查該政務官職權是否與該公司業務存在利益衝突，並查明出資財產來源。';
+        setQ(qList, 'q3_2', {
+          status: 'alert',
+          value: '大股東趙培倫為現任政務官親弟 (國內PEP利害關係人)',
+          reasoning: '大股東趙培倫持股35%（UBO），經全球反洗錢系統核對，其為現任直轄市副市長趙O宇之胞弟，屬洗錢防制法規範之「重要政治性職務人士之家庭成員（二親等血親）」。',
+          citation: 'PEP 檢索命中：趙培倫為現任直轄市副市長之親胞弟，符合洗錢防制法二親等血親規定',
+          deficiencyAction: '需調查該政務官職權是否與該公司業務存在利益衝突，並查明出資財產來源。'
+        });
 
         // Q3.3
-        qList[10].status = 'alert';
-        qList[10].value = '負面新聞命中：涉及區塊鏈群組吸金爭議，曾遭檢調傳喚';
-        qList[10].reasoning = '113年4月媒體刊載該公司行銷團隊涉入爭議性區塊鏈自救會投資糾紛，曾赴檢調說明，具重大法遵與聲譽風險。';
-        qList[10].citation = '負面新聞：極光鏈動行銷團隊遭檢調傳喚釐清吸金爭議';
-        qList[10].deficiencyAction = '需徵提律師意見書或地檢署偵結不起訴處分書證明。';
+        setQ(qList, 'q3_3', {
+          status: 'alert',
+          value: '負面新聞命中：涉及區塊鏈群組吸金爭議，曾遭檢調傳喚',
+          reasoning: '113年4月媒體刊載該公司行銷團隊涉入爭議性區塊鏈自救會投資糾紛，曾赴檢調說明，具重大法遵與聲譽風險。',
+          citation: '負面新聞：極光鏈動行銷團隊遭檢調傳喚釐清吸金爭議',
+          deficiencyAction: '需徵提律師意見書或地檢署偵結不起訴處分書證明。'
+        });
 
         // Q6.1
-        qList[20].status = 'alert';
-        qList[20].value = '極高風險 (High / Critical AML Risk)';
-        qList[20].reasoning = '涉及虛擬資產(VASP)、政治人物利害關係人(PEP)持股35%、且有涉吸金負面新聞，各項風險指標均達行內最高警示等級。';
-        qList[20].citation = '綜合評定：高風險 (High Risk 98分)';
-        qList[20].deficiencyAction = '進行全面背景深層盡職調查 (Deep Due Diligence)。';
+        setQ(qList, 'q6_1', {
+          status: 'alert',
+          value: '極高風險 (High / Critical AML Risk)',
+          reasoning: '涉及虛擬資產(VASP)、政治人物利害關係人(PEP)持股35%、且有涉吸金負面新聞，各項風險指標均達行內最高警示等級。',
+          citation: '綜合評定：高風險 (High Risk 98分)',
+          deficiencyAction: '進行全面背景深層盡職調查 (Deep Due Diligence)。'
+        });
 
         // Q6.2
-        qList[21].status = 'alert';
-        qList[21].value = '強制啟動最嚴格加強客戶審查 (Tier-1 EDD)';
-        qList[21].reasoning = 'PEP直接持股且涉負面新聞，依法必須清查最終財富來源 (Source of Wealth) 及設立資金合法證明。';
-        qList[21].citation = '依洗錢防制法第9條，PEP關聯戶強制執行最高規格 EDD';
-        qList[21].deficiencyAction = '要求提供大股東個人歷年所得扣繳憑單與財富累積證明。';
+        setQ(qList, 'q6_2', {
+          status: 'alert',
+          value: '強制啟動最嚴格加強客戶審查 (Tier-1 EDD)',
+          reasoning: 'PEP直接持股且涉負面新聞，依法必須清查最終財富來源 (Source of Wealth) 及設立資金合法證明。',
+          citation: '依洗錢防制法第9條，PEP關聯戶強制執行最高規格 EDD',
+          deficiencyAction: '要求提供大股東個人歷年所得扣繳憑單與財富累積證明。'
+        });
 
         // Q6.3
-        qList[22].status = 'alert';
-        qList[22].value = '【建議予以婉拒開戶 (Decline)】或附嚴格限制條件';
-        qList[22].reasoning = '由於該公司未能提示金管會洗錢防制遵循洗錢聲明，且涉司法爭議新聞，若開戶恐遭作為地下OTC洗錢管道，對本行聲譽風險極高，建議婉拒開戶。';
-        qList[22].citation = '未符法規合規標準，建議婉拒';
-        qList[22].deficiencyAction = '製備婉拒開戶說明書或報送總行核駁。';
+        setQ(qList, 'q6_3', {
+          status: 'alert',
+          value: '【建議予以婉拒開戶 (Decline)】或附嚴格限制條件',
+          reasoning: '由於該公司未能提示金管會洗錢防制遵循洗錢聲明，且涉司法爭議新聞，若開戶恐遭作為地下OTC洗錢管道，對本行聲譽風險極高，建議婉拒開戶。',
+          citation: '未符法規合規標準，建議婉拒',
+          deficiencyAction: '製備婉拒開戶說明書或報送總行核駁。'
+        });
 
         // Q6.4
-        qList[23].status = 'alert';
-        qList[23].value = '總行洗錢防制專責主管 (CCO) 及副總經理層級核決';
-        qList[23].reasoning = '涉及PEP重要政治人物開戶與高風險爭議，分行無准駁裁量權，依規章須報呈總行防制洗錢專責主管及總行法遵長核簽。';
-        qList[23].citation = 'PEP開戶案件依規章由總行專責主管核決';
-        qList[23].deficiencyAction = '擬具專案簽呈呈報總行防制洗錢部。';
+        setQ(qList, 'q6_4', {
+          status: 'alert',
+          value: '總行洗錢防制專責主管 (CCO) 及副總經理層級核決',
+          reasoning: '涉及PEP重要政治人物開戶與高風險爭議，分行無准駁裁量權，依規章須報呈總行防制洗錢專責主管及總行法遵長核簽。',
+          citation: 'PEP開戶案件依規章由總行專責主管核決',
+          deficiencyAction: '擬具專案簽呈呈報總行防制洗錢部。'
+        });
 
         questions.value = qList;
       } else {
@@ -966,91 +1013,114 @@ createApp({
         const foundTax = taxMatch ? taxMatch[1] : (cases.value[caseKey]?.taxId || '88390211');
         const foundName = nameMatch ? nameMatch[1] : (cases.value[caseKey]?.companyName || '自訂開戶企業');
 
-        qList[0].value = `${foundTax} (${foundName}，商工登記公示比對完成)`;
-        qList[0].reasoning = `地端AI從上傳掃描文本中抽取統一編號【${foundTax}】及公司名稱【${foundName}】，於地端資料庫核對設立登記合法有效。`;
-        qList[0].citation = taxMatch ? taxMatch[0] : `統一編號：${foundTax}`;
+        setQ(qList, 'q1_1', {
+          value: `${foundTax} (${foundName}，商工登記公示比對完成)`,
+          reasoning: `地端AI從上傳掃描文本中抽取統一編號【${foundTax}】及公司名稱【${foundName}】，於地端資料庫核對設立登記合法有效。`,
+          citation: taxMatch ? taxMatch[0] : `統一編號：${foundTax}`
+        });
 
         // 2. Capital & Age
         const capMatch = currentDoc.match(/(?:資本總額|資本額|實收資本額)[：:\s]*[^\d]*([0-9,]+)/);
         if (capMatch) {
           const capNum = parseInt(capMatch[1].replace(/,/g, ''), 10);
           if (capNum < 2000000) {
-            qList[1].status = 'pending';
-            qList[1].value = `資本額新台幣 ${capMatch[1]} 元 (資本規模較小，需加強驗證)`;
-            qList[1].reasoning = `地端AI辨識公司資本額為 ${capMatch[1]} 元，未達新台幣200萬元標準門檻，需防範借名空殼開戶。`;
-            qList[1].deficiencyAction = '徵提會計師資本查核報告書或股東存款證明。';
+            setQ(qList, 'q1_2', {
+              status: 'pending',
+              value: `資本額新台幣 ${capMatch[1]} 元 (資本規模較小，需加強驗證)`,
+              reasoning: `地端AI辨識公司資本額為 ${capMatch[1]} 元，未達新台幣200萬元標準門檻，需防範借名空殼開戶。`,
+              citation: capMatch[0],
+              deficiencyAction: '徵提會計師資本查核報告書或股東存款證明。'
+            });
           } else {
-            qList[1].status = 'pass';
-            qList[1].value = `資本額新台幣 ${capMatch[1]} 元 (資本充足)`;
-            qList[1].reasoning = `地端AI辨識資本額為 ${capMatch[1]} 元，資本規模充足，符合一般正常營業水準。`;
+            setQ(qList, 'q1_2', {
+              status: 'pass',
+              value: `資本額新台幣 ${capMatch[1]} 元 (資本充足)`,
+              reasoning: `地端AI辨識資本額為 ${capMatch[1]} 元，資本規模充足，符合一般正常營業水準。`,
+              citation: capMatch[0]
+            });
           }
-          qList[1].citation = capMatch[0];
         }
 
         // 3. Address & Business Center check
         const addrMatch = currentDoc.match(/(?:所在地|地址|營業地址)[：:\s]*([^\n\r]+)/);
         if (currentDoc.includes('商務中心') || currentDoc.includes('共享') || currentDoc.includes('虛擬') || currentDoc.includes('代收')) {
-          qList[2].status = 'pending';
-          qList[2].value = '借址登記於商務中心或共享辦公空間 (需實地查訪)';
-          qList[2].reasoning = '地端AI偵測到登記地址包含「商務中心」或「共享/代收」特徵詞，疑為借址登記，依洗錢防制原則需查證實體運作狀態。';
-          qList[2].citation = addrMatch ? addrMatch[0] : '地址包含商務中心特徵';
-          qList[2].deficiencyAction = '派員前往現場實地場勘並拍攝招牌與獨立辦公空間。';
+          setQ(qList, 'q1_3', {
+            status: 'pending',
+            value: '借址登記於商務中心或共享辦公空間 (需實地查訪)',
+            reasoning: '地端AI偵測到登記地址包含「商務中心」或「共享/代收」特徵詞，疑為借址登記，依洗錢防制原則需查證實體運作狀態。',
+            citation: addrMatch ? addrMatch[0] : '地址包含商務中心特徵',
+            deficiencyAction: '派員前往現場實地場勘並拍攝招牌與獨立辦公空間。'
+          });
         } else if (addrMatch) {
-          qList[2].status = 'pass';
-          qList[2].value = addrMatch[1].trim();
-          qList[2].reasoning = `地端AI抽取營業地址為「${addrMatch[1].trim()}」，具獨立實體營運處所特徵。`;
-          qList[2].citation = addrMatch[0];
+          setQ(qList, 'q1_3', {
+            status: 'pass',
+            value: addrMatch[1].trim(),
+            reasoning: `地端AI抽取營業地址為「${addrMatch[1].trim()}」，具獨立實體營運處所特徵。`,
+            citation: addrMatch[0]
+          });
         }
 
         // 4. Industry AML Risk (VASP, Crypto, Gaming, Pawn)
         if (currentDoc.includes('虛擬通貨') || currentDoc.includes('加密貨幣') || currentDoc.includes('VASP') || currentDoc.includes('OTC') || currentDoc.includes('博弈')) {
-          qList[3].status = 'alert';
-          qList[3].value = '涉及虛擬資產(VASP)或高洗錢敏感業務';
-          qList[3].reasoning = '地端AI偵測到業務包含虛擬資產或敏感特許金流，尚未提示主管機關合規聲明書，洗錢風險極高。';
-          qList[3].citation = '文本包含虛擬資產或特定管制業務關鍵詞';
-          qList[3].deficiencyAction = '索取金管會防制洗錢法令遵循聲明完成證明文件。';
+          setQ(qList, 'q1_4', {
+            status: 'alert',
+            value: '涉及虛擬資產(VASP)或高洗錢敏感業務',
+            reasoning: '地端AI偵測到業務包含虛擬資產或敏感特許金流，尚未提示主管機關合規聲明書，洗錢風險極高。',
+            citation: '文本包含虛擬資產或特定管制業務關鍵詞',
+            deficiencyAction: '索取金管會防制洗錢法令遵循聲明完成證明文件。'
+          });
         }
 
         // 5. UBO & Offshore Structure
         if (currentDoc.includes('BVI') || currentDoc.includes('維京') || currentDoc.includes('塞席爾') || currentDoc.includes('開曼') || currentDoc.includes('離岸')) {
-          qList[7].status = 'alert';
-          qList[7].value = '股權結構含境外避稅天堂法人 (未穿透最終自然人)';
-          qList[7].reasoning = '地端AI分析股東結構發現離岸境外控股公司，未提供董事職權證明 (Incumbency) 與自然人證件，無法穿透實質受益人 (>25%)。';
-          qList[7].citation = '檢索到境外離岸註冊實體';
-          qList[7].deficiencyAction = '要求補具經外館/公證之 Certificate of Incumbency 與 UBO 身分資料。';
+          setQ(qList, 'q2_3', {
+            status: 'alert',
+            value: '股權結構含境外避稅天堂法人 (未穿透最終自然人)',
+            reasoning: '地端AI分析股東結構發現離岸境外控股公司，未提供董事職權證明 (Incumbency) 與自然人證件，無法穿透實質受益人 (>25%)。',
+            citation: '檢索到境外離岸註冊實體',
+            deficiencyAction: '要求補具經外館/公證之 Certificate of Incumbency 與 UBO 身分資料。'
+          });
         }
 
         // 6. PEP Check
         if (currentDoc.includes('PEP') || currentDoc.includes('政務官') || currentDoc.includes('立委') || currentDoc.includes('副市長') || currentDoc.includes('公職')) {
-          qList[9].status = 'alert';
-          qList[9].value = '董監/大股東涉及重要政治性職務人士 (PEP 利害關係人)';
-          qList[9].reasoning = '地端AI交叉檢索發現主要治理或持股人員具 PEP 身分或其二親等利害關係人，依法強制啟動加強審查 (EDD)。';
-          qList[9].citation = 'PEP 關鍵特徵匹配';
-          qList[9].deficiencyAction = '進行財富來源 (Source of Wealth) 查核並報送總行核決。';
+          setQ(qList, 'q3_2', {
+            status: 'alert',
+            value: '董監/大股東涉及重要政治性職務人士 (PEP 利害關係人)',
+            reasoning: '地端AI交叉檢索發現主要治理或持股人員具 PEP 身分或其二親等利害關係人，依法強制啟動加強審查 (EDD)。',
+            citation: 'PEP 關鍵特徵匹配',
+            deficiencyAction: '進行財富來源 (Source of Wealth) 查核並報送總行核決。'
+          });
         }
 
         // 7. Adverse Media Check
         if (currentDoc.includes('吸金') || currentDoc.includes('傳喚') || currentDoc.includes('詐欺') || currentDoc.includes('掏空') || currentDoc.includes('負面新聞')) {
-          qList[10].status = 'alert';
-          qList[10].value = '負面新聞命中：涉及司法調查或吸金民事爭議';
-          qList[10].reasoning = '地端AI檢索媒體庫發現涉及吸金爭議或檢調調查報導，可能危害本行合規與商譽。';
-          qList[10].citation = '司法新聞與媒體檢索命中紀錄';
-          qList[10].deficiencyAction = '徵提不起訴處分書或律師適法性法律意見書。';
+          setQ(qList, 'q3_3', {
+            status: 'alert',
+            value: '負面新聞命中：涉及司法調查或吸金民事爭議',
+            reasoning: '地端AI檢索媒體庫發現涉及吸金爭議或檢調調查報導，可能危害本行合規與商譽。',
+            citation: '司法新聞與媒體檢索命中紀錄',
+            deficiencyAction: '徵提不起訴處分書或律師適法性法律意見書。'
+          });
         }
 
         // 8. 401 Tax Form Check
         if (!currentDoc.includes('401') && !currentDoc.includes('營業稅申報')) {
-          qList[16].status = 'pending';
-          qList[16].value = '未檢附營業稅401申報書（待補件）';
-          qList[16].reasoning = '文本未包含近期401營業稅申報銷售額及銷項稅額數據，無法核實真實年營收。';
-          qList[16].citation = '缺乏401表檢核憑證';
-          qList[16].deficiencyAction = '請客戶補交近兩期國稅局蓋章之401申報書或電子申報收執聯。';
+          setQ(qList, 'q5_1', {
+            status: 'pending',
+            value: '未檢附營業稅401申報書（待補件）',
+            reasoning: '文本未包含近期401營業稅申報銷售額及銷項稅額數據，無法核實真實年營收。',
+            citation: '缺乏401表檢核憑證',
+            deficiencyAction: '請客戶補交近兩期國稅局蓋章之401申報書或電子申報收執聯。'
+          });
         } else {
           const revMatch = currentDoc.match(/(?:銷售額|營業額)[：:\s]*[^\d]*([0-9,]+)/);
           if (revMatch) {
-            qList[16].value = `申報銷售額新台幣 ${revMatch[1]} 元`;
-            qList[16].reasoning = `地端AI從401表段落成功辨識近期申報銷售額為 ${revMatch[1]} 元。`;
-            qList[16].citation = revMatch[0];
+            setQ(qList, 'q5_1', {
+              value: `申報銷售額新台幣 ${revMatch[1]} 元`,
+              reasoning: `地端AI從401表段落成功辨識近期申報銷售額為 ${revMatch[1]} 元。`,
+              citation: revMatch[0]
+            });
           }
         }
 
@@ -1059,35 +1129,59 @@ createApp({
         const pendingCount = qList.filter(q => q.status === 'pending').length;
 
         if (alertCount > 0) {
-          qList[20].status = 'alert';
-          qList[20].value = '高風險 (High AML Risk - 觸發多項法規紅旗)';
-          qList[20].reasoning = `自訂上傳檔案經地端AI檢測，共觸發 ${alertCount} 項重大洗錢風險警示指標，整體洗錢風險評定為高風險。`;
-          qList[21].status = 'alert';
-          qList[21].value = '強制啟動加強客戶審查 (EDD) 程序';
-          qList[22].status = 'alert';
-          qList[22].value = '【建議予以婉拒開戶 (Decline)】或由總行專案審核';
-          qList[23].status = 'alert';
-          qList[23].value = '總行洗錢防制專責主管 (CCO) 及副總經理核決';
+          setQ(qList, 'q6_1', {
+            status: 'alert',
+            value: '高風險 (High AML Risk - 觸發多項法規紅旗)',
+            reasoning: `自訂上傳檔案經地端AI檢測，共觸發 ${alertCount} 項重大洗錢風險警示指標，整體洗錢風險評定為高風險。`
+          });
+          setQ(qList, 'q6_2', {
+            status: 'alert',
+            value: '強制啟動加強客戶審查 (EDD) 程序'
+          });
+          setQ(qList, 'q6_3', {
+            status: 'alert',
+            value: '【建議予以婉拒開戶 (Decline)】或由總行專案審核'
+          });
+          setQ(qList, 'q6_4', {
+            status: 'alert',
+            value: '總行洗錢防制專責主管 (CCO) 及副總經理核決'
+          });
         } else if (pendingCount > 0) {
-          qList[20].status = 'pending';
-          qList[20].value = '中度風險 - 待補件 (Medium Risk)';
-          qList[20].reasoning = `自訂上傳檔案經地端AI檢測，發現 ${pendingCount} 項關鍵必要文件或查驗程序未完成，需補正後再審。`;
-          qList[21].status = 'pending';
-          qList[21].value = '依缺失補正狀況評估是否啟動 EDD';
-          qList[22].status = 'pending';
-          qList[22].value = '【暫緩開戶 - 待補件照會中】';
-          qList[23].status = 'pending';
-          qList[23].value = '分行經理親簽核決';
+          setQ(qList, 'q6_1', {
+            status: 'pending',
+            value: '中度風險 - 待補件 (Medium Risk)',
+            reasoning: `自訂上傳檔案經地端AI檢測，發現 ${pendingCount} 項關鍵必要文件或查驗程序未完成，需補正後再審。`
+          });
+          setQ(qList, 'q6_2', {
+            status: 'pending',
+            value: '依缺失補正狀況評估是否啟動 EDD'
+          });
+          setQ(qList, 'q6_3', {
+            status: 'pending',
+            value: '【暫緩開戶 - 待補件照會中】'
+          });
+          setQ(qList, 'q6_4', {
+            status: 'pending',
+            value: '分行經理親簽核決'
+          });
         } else {
-          qList[20].status = 'pass';
-          qList[20].value = '低風險 (Low AML Risk)';
-          qList[20].reasoning = '自訂檔案各項核心查核指標均符合規範，無警示紅旗。';
-          qList[21].status = 'pass';
-          qList[21].value = '毋須啟動 EDD（標準 CDD 審核）';
-          qList[22].status = 'pass';
-          qList[22].value = '【核准開戶】(Approved)';
-          qList[23].status = 'pass';
-          qList[23].value = '分行經辦 -> 襄理覆核決行';
+          setQ(qList, 'q6_1', {
+            status: 'pass',
+            value: '低風險 (Low AML Risk)',
+            reasoning: '自訂檔案各項核心查核指標均符合規範，無警示紅旗。'
+          });
+          setQ(qList, 'q6_2', {
+            status: 'pass',
+            value: '毋須啟動 EDD（標準 CDD 審核）'
+          });
+          setQ(qList, 'q6_3', {
+            status: 'pass',
+            value: '【核准開戶】(Approved)'
+          });
+          setQ(qList, 'q6_4', {
+            status: 'pass',
+            value: '分行經辦 -> 襄理覆核決行'
+          });
         }
 
         questions.value = qList;
