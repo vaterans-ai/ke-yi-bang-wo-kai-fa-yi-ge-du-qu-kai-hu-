@@ -741,10 +741,10 @@
                   <span>1. 實質受益人 (UBO) 透明度檢核</span>
                 </div>
                 <p class="text-slate-600 leading-relaxed">
-                  {{ questions[7] ? questions[7].reasoning : '依洗錢防制法檢核持股超過25%之最終實質自然人。' }}
+                  {{ getQuestion('q2_3').reasoning || '依洗錢防制法檢核持股超過25%之最終實質自然人。' }}
                 </p>
                 <div class="mt-2 text-slate-500 font-mono text-[11px]">
-                  結論：{{ questions[7] ? questions[7].value : '正常' }}
+                  結論：{{ getQuestion('q2_3').value || '正常' }}
                 </div>
               </div>
 
@@ -755,10 +755,10 @@
                   <span>2. 開戶地緣性與跨區開戶合理性</span>
                 </div>
                 <p class="text-slate-600 leading-relaxed">
-                  {{ questions[13] ? questions[13].reasoning : '查核營業處所與開戶受理分行之地緣交通距離。' }}
+                  {{ getQuestion('q4_2').reasoning || '查核營業處所與開戶受理分行之地緣交通距離。' }}
                 </p>
                 <div class="mt-2 text-slate-500 font-mono text-[11px]">
-                  結論：{{ questions[13] ? questions[13].value : '具地緣關係' }}
+                  結論：{{ getQuestion('q4_2').value || '具地緣關係' }}
                 </div>
               </div>
 
@@ -769,10 +769,10 @@
                   <span>3. 登記資本額與預估月交易額相當性</span>
                 </div>
                 <p class="text-slate-600 leading-relaxed">
-                  {{ questions[14] ? questions[14].reasoning : '防範資本額微小卻有龐大異常進出金流之人頭帳戶。' }}
+                  {{ getQuestion('q4_3').reasoning || '防範資本額微小卻有龐大異常進出金流之人頭帳戶。' }}
                 </p>
                 <div class="mt-2 text-slate-500 font-mono text-[11px]">
-                  結論：{{ questions[14] ? questions[14].value : '相稱' }}
+                  結論：{{ getQuestion('q4_3').value || '相稱' }}
                 </div>
               </div>
 
@@ -783,10 +783,10 @@
                   <span>4. 政治受曝露人士 (PEP) 及負面新聞</span>
                 </div>
                 <p class="text-slate-600 leading-relaxed">
-                  {{ questions[9] ? questions[9].reasoning : '無涉PEP' }} | {{ questions[10] ? questions[10].reasoning : '無負面新聞' }}
+                  {{ getQuestion('q3_2').reasoning || '無涉PEP' }} | {{ getQuestion('q3_3').reasoning || '無負面新聞' }}
                 </p>
                 <div class="mt-2 text-slate-500 font-mono text-[11px]">
-                  結論：{{ (questions[9] && questions[9].status === 'alert') || (questions[10] && questions[10].status === 'alert') ? '命中紅旗警示' : '無命中' }}
+                  結論：{{ (getQuestion('q3_2').status === 'alert') || (getQuestion('q3_3').status === 'alert') ? '命中紅旗警示' : '無命中' }}
                 </div>
               </div>
 
