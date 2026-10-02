@@ -1,7 +1,7 @@
 // Corporate Banking Account Opening AI Due Diligence System
 // 企業金融開戶資格認定與在地AI審查系統
 
-const { createApp, ref, computed, onMounted, nextTick } = Vue;
+const { createApp, ref, computed, onMounted, nextTick, watch } = Vue;
 
 const SAMPLE_CASES = {
   case_normal: {
