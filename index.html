@@ -1,0 +1,1546 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>企業金融開戶資格認定與在地AI審查系統 | Corporate Banking KYC Suite</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Vue 3 -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bank: {
+              50: '#f0f6ff',
+              100: '#e0edff',
+              200: '#b9d8ff',
+              600: '#1d4ed8',
+              700: '#1e40af',
+              800: '#1e3a8a',
+              900: '#0f172a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen">
+  <div id="app" class="flex flex-col min-h-screen">
+    
+    <!-- Top Bank Navigation Header -->
+    <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40 shadow-md no-print">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          
+          <!-- Bank Branding -->
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center shadow-inner">
+              <i data-lucide="shield-check" class="w-6 h-6 text-white"></i>
+            </div>
+            <div>
+              <div class="flex items-center space-x-2">
+                <span class="font-bold text-lg tracking-wide text-white">臺灣商業銀行</span>
+                <span class="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30">企金風控 CDD</span>
+              </div>
+              <p class="text-xs text-slate-400">企業金融開戶資格認定與在地AI智慧審查系統</p>
+            </div>
+          </div>
+
+          <!-- Quick Case Switcher & Action Controls -->
+          <div class="flex items-center space-x-3">
+            
+            <!-- Security Badge -->
+            <div class="hidden xl:flex items-center space-x-1.5 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 text-xs">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>地端機敏保護模式 (Local AI Protected)</span>
+            </div>
+
+            <!-- Case Selector Dropdown -->
+            <div class="relative">
+              <select 
+                v-model="selectedCaseKey" 
+                @change="selectCase(selectedCaseKey)"
+                class="bg-slate-800 border border-slate-700 text-white text-xs rounded-lg px-3 py-2 pr-8 focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none cursor-pointer hover:bg-slate-750 transition"
+              >
+                <option v-for="(c, key) in cases" :key="key" :value="key">
+                  📁 {{ c.companyName }} ({{ c.taxId }})
+                </option>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400">
+                <i data-lucide="chevron-down" class="w-4 h-4"></i>
+              </div>
+            </div>
+
+            <!-- Custom Upload Modal Button -->
+            <button 
+              @click="showCustomUploadModal = true"
+              class="inline-flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3 py-2 rounded-lg border border-slate-700 transition"
+              title="貼上自訂開戶文字或掃描檔案OCR文字"
+            >
+              <i data-lucide="upload-cloud" class="w-4 h-4 text-blue-400"></i>
+              <span class="hidden sm:inline">讀取自訂開戶資料</span>
+            </button>
+
+            <!-- Re-run AI Scan Button -->
+            <button 
+              @click="runLocalAiScan"
+              :disabled="isScanning"
+              class="inline-flex items-center space-x-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold px-3 py-2 rounded-lg shadow-sm transition active:scale-95"
+            >
+              <i data-lucide="sparkles" class="w-4 h-4" :class="{'animate-spin': isScanning}"></i>
+              <span class="hidden sm:inline">{{ isScanning ? '地端AI分析中...' : '重新AI審查' }}</span>
+            </button>
+
+            <!-- Export JSON Button -->
+            <button 
+              @click="exportChecklistJson"
+              class="inline-flex items-center space-x-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-2.5 py-2 rounded-lg border border-slate-700 transition"
+              title="匯出審查認定單 JSON"
+            >
+              <i data-lucide="download" class="w-4 h-4"></i>
+            </button>
+
+            <!-- Print / PDF Button -->
+            <button 
+              @click="printPage"
+              class="inline-flex items-center space-x-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs px-2.5 py-2 rounded-lg border border-slate-700 transition"
+              title="列印審查報告或轉存 PDF"
+            >
+              <i data-lucide="printer" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </header>
+
+    <!-- Scanning Real-time Drawer (Active when isScanning) -->
+    <div v-if="isScanning" class="bg-blue-900/90 text-white border-b border-blue-700 px-4 py-3 shadow-inner no-print transition-all">
+      <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div class="flex items-center space-x-3">
+          <div class="w-8 h-8 rounded-full bg-blue-500/30 flex items-center justify-center animate-spin">
+            <i data-lucide="loader-2" class="w-5 h-5 text-blue-300"></i>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="font-bold text-sm">地端神經萃取引擎推論中</span>
+              <span class="text-xs bg-blue-700/60 px-2 py-0.5 rounded text-blue-200">步驟 {{ scanStep }}/5 ({{ scanProgress }}%)</span>
+            </div>
+            <p class="text-xs text-blue-200 truncate max-w-xl">{{ scanLogs[0] || '初始化地端安全隔離沙箱...' }}</p>
+          </div>
+        </div>
+        <div class="w-full md:w-64 bg-blue-950/60 rounded-full h-2.5 overflow-hidden border border-blue-700">
+          <div class="bg-gradient-to-r from-blue-400 to-emerald-400 h-2.5 transition-all duration-300" :style="{ width: scanProgress + '%' }"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      
+      <!-- Company Information Card & Header Banner -->
+      <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-6 transition">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          
+          <!-- Company Basics -->
+          <div class="flex items-start space-x-4">
+            <div class="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 shadow-sm flex-shrink-0">
+              <i data-lucide="building-2" class="w-6 h-6 text-blue-600"></i>
+            </div>
+            <div>
+              <div class="flex flex-wrap items-center gap-2">
+                <h1 class="text-xl font-bold text-slate-900">{{ currentCase.companyName }}</h1>
+                <span class="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-300">
+                  統編：{{ currentCase.taxId }}
+                </span>
+                <span :class="currentCase.riskBadge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full border">
+                  {{ currentCase.riskLevel }}
+                </span>
+              </div>
+              <p class="text-xs text-slate-600 mt-1 leading-relaxed max-w-4xl">
+                {{ currentCase.summary }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Quick Mode Switch / Batch Approve -->
+          <div class="flex items-center space-x-2 flex-shrink-0 no-print">
+            <button 
+              @click="verifyAllPassed"
+              class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 text-xs font-semibold transition"
+            >
+              <i data-lucide="check-check" class="w-4 h-4"></i>
+              <span>批次核定所有合格項</span>
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Metric Badges Row (5 Interactive Status Cards) -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 pt-4">
+          
+          <!-- Total Items -->
+          <div 
+            @click="activeSectionFilter = 'all'; statusFilter = 'all'"
+            class="bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg p-3 cursor-pointer transition"
+          >
+            <div class="flex items-center justify-between text-slate-500 text-xs mb-1">
+              <span>全案查核問項</span>
+              <i data-lucide="list-checks" class="w-4 h-4 text-slate-400"></i>
+            </div>
+            <div class="flex items-baseline space-x-2">
+              <span class="text-2xl font-bold text-slate-800">{{ stats.total }}</span>
+              <span class="text-xs text-slate-500">項必查項目</span>
+            </div>
+          </div>
+
+          <!-- Passed Items -->
+          <div 
+            @click="statusFilter = 'pass'"
+            class="bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 rounded-lg p-3 cursor-pointer transition"
+            :class="{'ring-2 ring-emerald-500': statusFilter === 'pass'}"
+          >
+            <div class="flex items-center justify-between text-emerald-700 text-xs mb-1 font-medium">
+              <span>審核通過 (Pass)</span>
+              <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i>
+            </div>
+            <div class="flex items-baseline space-x-2">
+              <span class="text-2xl font-bold text-emerald-700">{{ stats.pass }}</span>
+              <span class="text-xs text-emerald-600">符合規章</span>
+            </div>
+          </div>
+
+          <!-- Pending Items -->
+          <div 
+            @click="statusFilter = 'pending'"
+            class="bg-amber-50 hover:bg-amber-100/80 border border-amber-200 rounded-lg p-3 cursor-pointer transition"
+            :class="{'ring-2 ring-amber-500': statusFilter === 'pending'}"
+          >
+            <div class="flex items-center justify-between text-amber-700 text-xs mb-1 font-medium">
+              <span>待補件 (Pending)</span>
+              <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-600"></i>
+            </div>
+            <div class="flex items-baseline space-x-2">
+              <span class="text-2xl font-bold text-amber-700">{{ stats.pending }}</span>
+              <span class="text-xs text-amber-600">需徵提補正</span>
+            </div>
+          </div>
+
+          <!-- Alert Items -->
+          <div 
+            @click="statusFilter = 'alert'"
+            class="bg-rose-50 hover:bg-rose-100/80 border border-rose-200 rounded-lg p-3 cursor-pointer transition"
+            :class="{'ring-2 ring-rose-500': statusFilter === 'alert'}"
+          >
+            <div class="flex items-center justify-between text-rose-700 text-xs mb-1 font-medium">
+              <span>警訊紅旗 (Alert)</span>
+              <i data-lucide="alert-octagon" class="w-4 h-4 text-rose-600"></i>
+            </div>
+            <div class="flex items-baseline space-x-2">
+              <span class="text-2xl font-bold text-rose-700">{{ stats.alert }}</span>
+              <span class="text-xs text-rose-600">高風險指標</span>
+            </div>
+          </div>
+
+          <!-- Maker Verification Status -->
+          <div 
+            @click="statusFilter = 'unverified'"
+            class="bg-blue-50 hover:bg-blue-100/80 border border-blue-200 rounded-lg p-3 cursor-pointer transition"
+            :class="{'ring-2 ring-blue-500': statusFilter === 'unverified'}"
+          >
+            <div class="flex items-center justify-between text-blue-700 text-xs mb-1 font-medium">
+              <span>經辦覆核進度</span>
+              <i data-lucide="user-check" class="w-4 h-4 text-blue-600"></i>
+            </div>
+            <div class="flex items-baseline space-x-2">
+              <span class="text-2xl font-bold text-blue-800">{{ stats.verified }}</span>
+              <span class="text-xs text-blue-600">/ {{ stats.total }} 已簽核</span>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- Navigation Tabs Bar -->
+      <nav class="flex items-center space-x-2 border-b border-slate-200 mb-6 overflow-x-auto no-print">
+        
+        <!-- Tab 1: Checklist & Form -->
+        <button 
+          @click="activeTab = 'checklist'"
+          class="flex items-center space-x-2 px-4 py-3 border-b-2 font-medium text-sm transition whitespace-nowrap"
+          :class="activeTab === 'checklist' ? 'border-blue-600 text-blue-600 bg-white rounded-t-lg' : 'border-transparent text-slate-500 hover:text-slate-700'"
+        >
+          <i data-lucide="clipboard-check" class="w-4 h-4"></i>
+          <span>企金開戶資格查核表 (Checklist)</span>
+          <span class="px-2 py-0.5 rounded-full text-xs font-semibold" :class="activeTab === 'checklist' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600'">
+            {{ stats.total }}
+          </span>
+        </button>
+
+        <!-- Tab 2: Deficiency & Risk Summary Report -->
+        <button 
+          @click="activeTab = 'summary'"
+          class="flex items-center space-x-2 px-4 py-3 border-b-2 font-medium text-sm transition whitespace-nowrap"
+          :class="activeTab === 'summary' ? 'border-blue-600 text-blue-600 bg-white rounded-t-lg' : 'border-transparent text-slate-500 hover:text-slate-700'"
+        >
+          <i data-lucide="file-warning" class="w-4 h-4"></i>
+          <span>未完成與風險摘要報告 (Deficiency Report)</span>
+          <span v-if="stats.pending + stats.alert > 0" class="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+            {{ stats.pending + stats.alert }}
+          </span>
+        </button>
+
+        <!-- Tab 3: Source Documents & Scans -->
+        <button 
+          @click="activeTab = 'docs'"
+          class="flex items-center space-x-2 px-4 py-3 border-b-2 font-medium text-sm transition whitespace-nowrap"
+          :class="activeTab === 'docs' ? 'border-blue-600 text-blue-600 bg-white rounded-t-lg' : 'border-transparent text-slate-500 hover:text-slate-700'"
+        >
+          <i data-lucide="folder-search" class="w-4 h-4"></i>
+          <span>掃描卷宗與原始文件 (Source Documents)</span>
+          <span class="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-600">7份</span>
+        </button>
+
+        <!-- Tab 4: Local AI Engine Settings -->
+        <button 
+          @click="activeTab = 'settings'"
+          class="flex items-center space-x-2 px-4 py-3 border-b-2 font-medium text-sm transition whitespace-nowrap"
+          :class="activeTab === 'settings' ? 'border-blue-600 text-blue-600 bg-white rounded-t-lg' : 'border-transparent text-slate-500 hover:text-slate-700'"
+        >
+          <i data-lucide="cpu" class="w-4 h-4"></i>
+          <span>地端 AI 引擎設定 (Local Engine & Ollama)</span>
+        </button>
+
+      </nav>
+
+      <!-- TAB 1: CHECKLIST & QUALIFICATION FORM -->
+      <section v-show="activeTab === 'checklist'">
+        
+        <!-- Filters & Search Toolbar -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6 no-print">
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            
+            <!-- Section Filters Dropdown/Pills -->
+            <div class="flex flex-wrap items-center gap-1.5">
+              <button 
+                @click="activeSectionFilter = 'all'"
+                class="px-2.5 py-1.5 rounded-lg text-xs font-medium transition"
+                :class="activeSectionFilter === 'all' ? 'bg-slate-800 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+              >
+                全部類別 (24)
+              </button>
+              <button 
+                @click="activeSectionFilter = '1'"
+                class="px-2.5 py-1.5 rounded-lg text-xs font-medium transition"
+                :class="activeSectionFilter === '1' ? 'bg-slate-800 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+              >
+                一、基本合法性
+              </button>
+              <button 
+                @click="activeSectionFilter = '2'"
+                class="px-2.5 py-1.5 rounded-lg text-xs font-medium transition"
+                :class="activeSectionFilter === '2' ? 'bg-slate-800 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+              >
+                二、實質受益人UBO
+              </button>
+              <button 
+                @click="activeSectionFilter = '3'"
+                class="px-2.5 py-1.5 rounded-lg text-xs font-medium transition"
+                :class="activeSectionFilter === '3' ? 'bg-slate-800 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+              >
+                三、洗錢防制與制裁
+              </button>
+              <button 
+                @click="activeSectionFilter = '4'"
+                class="px-2.5 py-1.5 rounded-lg text-xs font-medium transition"
+                :class="activeSectionFilter === '4' ? 'bg-slate-800 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+              >
+                四、營運地緣與商業性
+              </button>
+              <button 
+                @click="activeSectionFilter = '5'"
+                class="px-2.5 py-1.5 rounded-lg text-xs font-medium transition"
+                :class="activeSectionFilter === '5' ? 'bg-slate-800 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+              >
+                五、營業佐證與401
+              </button>
+              <button 
+                @click="activeSectionFilter = '6'"
+                class="px-2.5 py-1.5 rounded-lg text-xs font-medium transition"
+                :class="activeSectionFilter === '6' ? 'bg-slate-800 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'"
+              >
+                六、綜合評級與結論
+              </button>
+            </div>
+
+            <!-- Search Box & Status Filter -->
+            <div class="flex items-center space-x-2">
+              <div class="relative w-full sm:w-64">
+                <input 
+                  type="text" 
+                  v-model="searchQuery"
+                  placeholder="搜尋問項、引文、數值..." 
+                  class="w-full bg-slate-50 border border-slate-300 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                <div class="absolute inset-y-0 left-0 flex items-center pl-2.5 pointer-events-none text-slate-400">
+                  <i data-lucide="search" class="w-3.5 h-3.5"></i>
+                </div>
+                <button v-if="searchQuery" @click="searchQuery = ''" class="absolute inset-y-0 right-0 flex items-center pr-2 text-slate-400 hover:text-slate-600">
+                  <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+
+              <!-- Status Filter Select -->
+              <select 
+                v-model="statusFilter"
+                class="bg-slate-50 border border-slate-300 text-xs rounded-lg px-2.5 py-1.5 text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              >
+                <option value="all">所有狀態</option>
+                <option value="pass">僅看符合 (Pass)</option>
+                <option value="pending">僅看待補件 (Pending)</option>
+                <option value="alert">僅看警訊 (Alert)</option>
+                <option value="unverified">僅看未經辦覆核</option>
+              </select>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Questions Count Summary & Alert -->
+        <div class="flex items-center justify-between mb-4">
+          <div class="text-xs font-semibold text-slate-600">
+            顯示 <span class="text-blue-600">{{ filteredQuestions.length }}</span> / 24 個開戶查核問項
+          </div>
+          <div class="text-xs text-slate-500">
+            * 每個問項均標註【AI填表結果】、【判定邏輯】與【原始卷宗引文】
+          </div>
+        </div>
+
+        <!-- Question Cards Grid -->
+        <div class="space-y-4">
+          <div 
+            v-for="item in filteredQuestions" 
+            :key="item.id"
+            class="bg-white rounded-xl shadow-sm border p-5 transition hover:shadow-md"
+            :class="{
+              'border-slate-200': item.status === 'pass',
+              'border-amber-300 bg-amber-50/10': item.status === 'pending',
+              'border-rose-300 bg-rose-50/10': item.status === 'alert',
+            }"
+          >
+            <!-- Card Header -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+              <div class="flex items-center space-x-2">
+                <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                  {{ item.id.toUpperCase() }}
+                </span>
+                <span class="text-xs font-medium text-slate-500">
+                  {{ item.sectionName.split('：')[0] }}
+                </span>
+                <h3 class="text-base font-bold text-slate-900">
+                  {{ item.title }}
+                </h3>
+              </div>
+              
+              <div class="flex items-center space-x-2 flex-shrink-0">
+                <!-- AI Confidence -->
+                <span class="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 flex items-center space-x-1" title="地端AI抽取信心度">
+                  <i data-lucide="zap" class="w-3 h-3 text-amber-500"></i>
+                  <span>信心度 {{ item.aiConfidence }}%</span>
+                </span>
+                
+                <!-- Status Badge -->
+                <span :class="getStatusBadge(item.status).class" class="text-xs font-bold px-2.5 py-0.5 rounded-full border">
+                  {{ getStatusBadge(item.status).label }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Question Description -->
+            <p class="text-xs text-slate-600 mt-2.5 leading-relaxed">
+              <span class="font-semibold text-slate-700">查驗規章要求：</span>{{ item.desc }}
+            </p>
+
+            <!-- AI Extracted Field Value -->
+            <div class="mt-3.5 bg-slate-50 rounded-lg p-3 border border-slate-200 flex items-start space-x-2.5">
+              <div class="mt-0.5 flex-shrink-0">
+                <i v-if="item.status === 'pass'" data-lucide="check-circle" class="w-4 h-4 text-emerald-600"></i>
+                <i v-else-if="item.status === 'pending'" data-lucide="alert-triangle" class="w-4 h-4 text-amber-600"></i>
+                <i v-else data-lucide="alert-octagon" class="w-4 h-4 text-rose-600"></i>
+              </div>
+              <div class="flex-1">
+                <span class="text-xs font-bold text-slate-700 block mb-0.5">【地端AI自動填表內容】</span>
+                <span class="text-sm font-semibold text-slate-900">{{ item.value }}</span>
+              </div>
+            </div>
+
+            <!-- WHY THIS WAS FILLED: Rationale & Compliance Logic (Every question requirement!) -->
+            <div class="mt-3 bg-blue-50/70 rounded-lg p-3.5 border border-blue-200/80">
+              <div class="flex items-center space-x-1.5 text-blue-900 text-xs font-bold mb-1">
+                <i data-lucide="brain-circuit" class="w-4 h-4 text-blue-700"></i>
+                <span>【為什麼這麼填的審核邏輯 (Reasoning & Rationale)】</span>
+              </div>
+              <p class="text-xs text-blue-950 leading-relaxed font-normal">
+                {{ item.reasoning }}
+              </p>
+            </div>
+
+            <!-- Citation & Source Reference -->
+            <div class="mt-3 bg-amber-50/40 rounded-lg p-3 border border-amber-200/60">
+              <div class="flex items-center justify-between text-xs text-amber-900 font-semibold mb-1">
+                <div class="flex items-center space-x-1.5">
+                  <i data-lucide="file-text" class="w-3.5 h-3.5 text-amber-700"></i>
+                  <span>原始佐證依據：{{ item.sourceDoc }}（{{ item.sourceSection }}）</span>
+                </div>
+              </div>
+              <blockquote class="text-xs text-slate-700 italic border-l-2 border-amber-400 pl-2.5 py-0.5 font-mono bg-white/70 rounded">
+                "{{ item.citation }}"
+              </blockquote>
+            </div>
+
+            <!-- Deficiency Action Callout (If Pending or Alert) -->
+            <div v-if="item.status === 'pending' || item.status === 'alert'" class="mt-3 rounded-lg p-3 border" :class="item.status === 'alert' ? 'bg-rose-50 border-rose-200' : 'bg-amber-50 border-amber-200'">
+              <div class="flex items-center space-x-1.5 text-xs font-bold" :class="item.status === 'alert' ? 'text-rose-900' : 'text-amber-900'">
+                <i data-lucide="arrow-right-circle" class="w-4 h-4"></i>
+                <span>應行補正作為與風控處置：</span>
+              </div>
+              <p class="text-xs mt-1 font-medium" :class="item.status === 'alert' ? 'text-rose-950' : 'text-amber-950'">
+                {{ item.deficiencyAction }}
+              </p>
+            </div>
+
+            <!-- Card Action Footer (Maker Checker Review & Edit) -->
+            <div class="mt-4 pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              
+              <!-- Verification Checkbox -->
+              <label class="inline-flex items-center space-x-2 text-xs font-medium text-slate-700 cursor-pointer select-none">
+                <input 
+                  type="checkbox" 
+                  :checked="item.verified" 
+                  @change="toggleVerify(item)"
+                  class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300 cursor-pointer"
+                >
+                <span>經辦行員覆核已核實 (Maker Verified)</span>
+                <span v-if="item.verified" class="text-xs text-emerald-600 font-semibold flex items-center space-x-1">
+                  <i data-lucide="check" class="w-3 h-3"></i>
+                  <span>已核定</span>
+                </span>
+              </label>
+
+              <!-- Auditor Note Indicator & Review Button -->
+              <div class="flex items-center space-x-2">
+                <span v-if="item.auditorNote" class="text-xs text-slate-500 italic truncate max-w-xs" title="經辦覆核備註">
+                  註：{{ item.auditorNote }}
+                </span>
+                <button 
+                  @click="openItemDetail(item)"
+                  class="inline-flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition"
+                >
+                  <i data-lucide="edit-3" class="w-3.5 h-3.5 text-slate-500"></i>
+                  <span>查看詳情 / 編輯覆核</span>
+                </button>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+
+      </section>
+
+      <!-- TAB 2: DEFICIENCY & RISK SUMMARY REPORT (未完成的報告摘要) -->
+      <section v-show="activeTab === 'summary'" class="space-y-6">
+        
+        <!-- Official Bank CDD Inspection Report Card -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          
+          <!-- Report Header -->
+          <div class="bg-slate-900 text-white p-6 border-b border-slate-800">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div class="flex items-center space-x-2 mb-1">
+                  <span class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                    銀行內部機密文件 (CONFIDENTIAL)
+                  </span>
+                  <span class="text-xs text-slate-400 font-mono">案號：KYC-2026-{{ currentCase.taxId }}</span>
+                </div>
+                <h2 class="text-xl font-bold">企業金融開戶盡職調查 (CDD) 缺失未完成與風險處置摘要報告</h2>
+                <p class="text-xs text-slate-400 mt-1">
+                  受查戶：<span class="text-white font-medium">{{ currentCase.companyName }}</span>（統一編號：{{ currentCase.taxId }}） | 審查基準日：民國115年10月02日
+                </p>
+              </div>
+
+              <!-- Quick Print / Action Buttons -->
+              <div class="flex items-center space-x-2 no-print">
+                <button 
+                  @click="showDeficiencyLetterModal = true"
+                  v-if="pendingDeficiencyList.length > 0"
+                  class="inline-flex items-center space-x-1.5 px-3 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow transition"
+                >
+                  <i data-lucide="mail" class="w-4 h-4"></i>
+                  <span>產出補正照會公函</span>
+                </button>
+
+                <button 
+                  @click="showApprovalMemoModal = true"
+                  class="inline-flex items-center space-x-1.5 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow transition"
+                >
+                  <i data-lucide="file-check" class="w-4 h-4"></i>
+                  <span>產出審查核決簽呈</span>
+                </button>
+
+                <button 
+                  @click="printPage"
+                  class="inline-flex items-center space-x-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition"
+                >
+                  <i data-lucide="printer" class="w-4 h-4"></i>
+                  <span>列印本摘要報告</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Executive Summary Section -->
+          <div class="p-6 bg-slate-50 border-b border-slate-200">
+            <h3 class="text-sm font-bold text-slate-900 mb-3 flex items-center space-x-2">
+              <i data-lucide="gauge" class="w-4 h-4 text-blue-600"></i>
+              <span>第一節：案件審查結論與核決層級評估</span>
+            </h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <!-- Risk Rating Box -->
+              <div class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+                <span class="text-xs text-slate-500 block mb-1">洗錢防制綜合風險評等</span>
+                <span :class="stats.overallColor" class="inline-block text-sm font-bold px-2.5 py-1 rounded-full border mb-2">
+                  {{ stats.overallRisk }}
+                </span>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                  {{ questions[20] ? questions[20].reasoning : '經地端AI洗錢防制規則模組交叉計算全案風險指標。' }}
+                </p>
+              </div>
+
+              <!-- Recommendation Decision -->
+              <div class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+                <span class="text-xs text-slate-500 block mb-1">開戶資格審查擬處意見</span>
+                <div class="text-base font-bold mb-2" :class="stats.alert > 0 ? 'text-rose-700' : (stats.pending > 0 ? 'text-amber-700' : 'text-emerald-700')">
+                  {{ questions[22] ? questions[22].value : '【核准開戶】' }}
+                </div>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                  {{ questions[22] ? questions[22].reasoning : '依內部規章評估開戶適格性。' }}
+                </p>
+              </div>
+
+              <!-- Approval Authority -->
+              <div class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+                <span class="text-xs text-slate-500 block mb-1">法定案件核決層級</span>
+                <div class="text-sm font-bold text-slate-800 mb-2">
+                  {{ questions[23] ? questions[23].value : '分行二級主管 (襄理/副理) 決行' }}
+                </div>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                  {{ questions[23] ? questions[23].reasoning : '依分層負責核決權限表送核。' }}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 2: Deficiencies Table (Missing Documents & Action Required) -->
+          <div class="p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-sm font-bold text-slate-900 flex items-center space-x-2">
+                <i data-lucide="clipboard-x" class="w-4 h-4 text-amber-600"></i>
+                <span>第二節：未完成問項、缺失文件與補正處置清單 (共 {{ pendingDeficiencyList.length }} 項)</span>
+              </h3>
+              <span class="text-xs text-slate-500">
+                * 依金管會銀行防制洗錢辦法規定，實質受益人或重要商業文件未齊全前不得開立帳戶
+              </span>
+            </div>
+
+            <!-- Celebratory Card if 0 Deficiencies -->
+            <div v-if="pendingDeficiencyList.length === 0" class="bg-emerald-50 border border-emerald-200 rounded-xl p-6 text-center my-4">
+              <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-3">
+                <i data-lucide="check-circle" class="w-7 h-7"></i>
+              </div>
+              <h4 class="text-base font-bold text-emerald-900 mb-1">無任何未完成缺失或警示紅旗！</h4>
+              <p class="text-xs text-emerald-700 max-w-lg mx-auto">
+                本案 24 項企業金融開戶查核指標均全數審核合格，佐證文件齊全無缺漏，符合金管會法令與本行內控標準，可直接呈報主管核決放行。
+              </p>
+            </div>
+
+            <!-- Outstanding Items Table -->
+            <div v-else class="overflow-x-auto border border-slate-200 rounded-lg">
+              <table class="min-w-full divide-y divide-slate-200 text-xs">
+                <thead class="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider">
+                  <tr>
+                    <th scope="col" class="px-3 py-3 text-left w-20">編號</th>
+                    <th scope="col" class="px-3 py-3 text-left w-36">查核向度</th>
+                    <th scope="col" class="px-4 py-3 text-left w-56">問項與現況</th>
+                    <th scope="col" class="px-4 py-3 text-left">未完成原因與邏輯 (Why Flagged)</th>
+                    <th scope="col" class="px-4 py-3 text-left w-64">應辦補正處置 (Action Required)</th>
+                    <th scope="col" class="px-3 py-3 text-center w-24">狀態</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 bg-white">
+                  <tr v-for="item in pendingDeficiencyList" :key="item.id" class="hover:bg-slate-50/80 transition">
+                    <td class="px-3 py-3.5 font-mono font-bold text-slate-800">
+                      {{ item.id.toUpperCase() }}
+                    </td>
+                    <td class="px-3 py-3.5 text-slate-600">
+                      {{ item.sectionName.split('：')[1] || item.sectionName }}
+                    </td>
+                    <td class="px-4 py-3.5 font-semibold text-slate-900">
+                      <div class="mb-1">{{ item.title }}</div>
+                      <div class="text-slate-500 font-normal truncate max-w-xs">{{ item.value }}</div>
+                    </td>
+                    <td class="px-4 py-3.5 text-slate-700 leading-relaxed">
+                      <div class="bg-blue-50/60 p-2 rounded border border-blue-100">
+                        {{ item.reasoning }}
+                      </div>
+                      <div class="text-slate-400 text-[11px] mt-1 italic">
+                        出處：{{ item.sourceDoc }}
+                      </div>
+                    </td>
+                    <td class="px-4 py-3.5 text-slate-800 font-medium">
+                      <div class="p-2 rounded border leading-relaxed" :class="item.status === 'alert' ? 'bg-rose-50 border-rose-200 text-rose-950' : 'bg-amber-50 border-amber-200 text-amber-950'">
+                        {{ item.deficiencyAction || '需洽詢客戶徵提主管機關核可證明文件或補充佐證。' }}
+                      </div>
+                    </td>
+                    <td class="px-3 py-3.5 text-center">
+                      <span :class="getStatusBadge(item.status).class" class="px-2 py-0.5 rounded-full font-bold border">
+                        {{ item.status === 'alert' ? '警訊' : '待補件' }}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+
+          <!-- Section 3: AML/CFT Red Flag Analysis -->
+          <div class="p-6 bg-slate-50 border-t border-slate-200">
+            <h3 class="text-sm font-bold text-slate-900 mb-3 flex items-center space-x-2">
+              <i data-lucide="shield-alert" class="w-4 h-4 text-rose-600"></i>
+              <span>第三節：洗錢防制 (AML/CFT) 紅旗警示深層分析</span>
+            </h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              
+              <!-- Red Flag 1: UBO Opacity -->
+              <div class="bg-white p-4 rounded-lg border border-slate-200">
+                <div class="flex items-center space-x-2 font-bold mb-1 text-slate-900">
+                  <i data-lucide="network" class="w-4 h-4 text-blue-600"></i>
+                  <span>1. 實質受益人 (UBO) 透明度檢核</span>
+                </div>
+                <p class="text-slate-600 leading-relaxed">
+                  {{ questions[7] ? questions[7].reasoning : '依洗錢防制法檢核持股超過25%之最終實質自然人。' }}
+                </p>
+                <div class="mt-2 text-slate-500 font-mono text-[11px]">
+                  結論：{{ questions[7] ? questions[7].value : '正常' }}
+                </div>
+              </div>
+
+              <!-- Red Flag 2: Branch Geographics -->
+              <div class="bg-white p-4 rounded-lg border border-slate-200">
+                <div class="flex items-center space-x-2 font-bold mb-1 text-slate-900">
+                  <i data-lucide="map-pin" class="w-4 h-4 text-emerald-600"></i>
+                  <span>2. 開戶地緣性與跨區開戶合理性</span>
+                </div>
+                <p class="text-slate-600 leading-relaxed">
+                  {{ questions[13] ? questions[13].reasoning : '查核營業處所與開戶受理分行之地緣交通距離。' }}
+                </p>
+                <div class="mt-2 text-slate-500 font-mono text-[11px]">
+                  結論：{{ questions[13] ? questions[13].value : '具地緣關係' }}
+                </div>
+              </div>
+
+              <!-- Red Flag 3: Capital vs Turnover Mismatch -->
+              <div class="bg-white p-4 rounded-lg border border-slate-200">
+                <div class="flex items-center space-x-2 font-bold mb-1 text-slate-900">
+                  <i data-lucide="trending-up" class="w-4 h-4 text-amber-600"></i>
+                  <span>3. 登記資本額與預估月交易額相當性</span>
+                </div>
+                <p class="text-slate-600 leading-relaxed">
+                  {{ questions[14] ? questions[14].reasoning : '防範資本額微小卻有龐大異常進出金流之人頭帳戶。' }}
+                </p>
+                <div class="mt-2 text-slate-500 font-mono text-[11px]">
+                  結論：{{ questions[14] ? questions[14].value : '相稱' }}
+                </div>
+              </div>
+
+              <!-- Red Flag 4: PEP and Adverse Media -->
+              <div class="bg-white p-4 rounded-lg border border-slate-200">
+                <div class="flex items-center space-x-2 font-bold mb-1 text-slate-900">
+                  <i data-lucide="user-x" class="w-4 h-4 text-rose-600"></i>
+                  <span>4. 政治受曝露人士 (PEP) 及負面新聞</span>
+                </div>
+                <p class="text-slate-600 leading-relaxed">
+                  {{ questions[9] ? questions[9].reasoning : '無涉PEP' }} | {{ questions[10] ? questions[10].reasoning : '無負面新聞' }}
+                </p>
+                <div class="mt-2 text-slate-500 font-mono text-[11px]">
+                  結論：{{ (questions[9] && questions[9].status === 'alert') || (questions[10] && questions[10].status === 'alert') ? '命中紅旗警示' : '無命中' }}
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Section 4: Signature Blocks (Print Ready) -->
+          <div class="p-6 bg-white border-t border-slate-200">
+            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">第四節：審查人員覆核與決行簽章</h3>
+            <div class="grid grid-cols-3 gap-6 text-center text-xs">
+              <div class="border border-slate-300 rounded p-4 h-24 flex flex-col justify-between">
+                <span class="text-slate-500">初審經辦行員</span>
+                <span class="font-mono text-slate-800 font-bold border-b border-dashed pb-1">李怡君 (員號 83912)</span>
+              </div>
+              <div class="border border-slate-300 rounded p-4 h-24 flex flex-col justify-between">
+                <span class="text-slate-500">覆核業務主管 / 襄理</span>
+                <span class="font-mono text-slate-800 font-bold border-b border-dashed pb-1">王建峰 (主管簽章)</span>
+              </div>
+              <div class="border border-slate-300 rounded p-4 h-24 flex flex-col justify-between">
+                <span class="text-slate-500">分行最高主管 / 經理批示</span>
+                <span class="font-mono text-slate-800 font-bold border-b border-dashed pb-1">張世昌 (分行經理)</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- TAB 3: SOURCE DOCUMENTS & SCANS (原始掃描檔案與卷宗) -->
+      <section v-show="activeTab === 'docs'" class="space-y-6">
+        
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+            <div>
+              <h2 class="text-lg font-bold text-slate-900">企業金融開戶掃描卷宗與文字原始憑證</h2>
+              <p class="text-xs text-slate-500 mt-0.5">
+                當前檢視案件：<span class="font-semibold text-slate-800">{{ currentCase.companyName }}</span>（統編：{{ currentCase.taxId }}）
+              </p>
+            </div>
+            <div class="text-xs text-slate-500 flex items-center space-x-1.5">
+              <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600"></i>
+              <span>地端安全讀取，無任何資料離開本機環境</span>
+            </div>
+          </div>
+
+          <!-- Document Sub-Tabs -->
+          <div class="flex flex-wrap gap-2 my-4">
+            <button 
+              @click="activeDocTab = 'moea'"
+              class="px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+              :class="activeDocTab === 'moea' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'"
+            >
+              1. 經濟部變更登記事項表
+            </button>
+            <button 
+              @click="activeDocTab = 'tax401'"
+              class="px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+              :class="activeDocTab === 'tax401' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'"
+            >
+              2. 營業稅 401 申報書
+            </button>
+            <button 
+              @click="activeDocTab = 'ubo'"
+              class="px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+              :class="activeDocTab === 'ubo' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'"
+            >
+              3. 實質受益人 (UBO) 聲明書
+            </button>
+            <button 
+              @click="activeDocTab = 'idDocs'"
+              class="px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+              :class="activeDocTab === 'idDocs' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'"
+            >
+              4. 負責人雙證件查核
+            </button>
+            <button 
+              @click="activeDocTab = 'lease'"
+              class="px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+              :class="activeDocTab === 'lease' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'"
+            >
+              5. 營業處所租約與水電憑證
+            </button>
+            <button 
+              @click="activeDocTab = 'tradeContract'"
+              class="px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+              :class="activeDocTab === 'tradeContract' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'"
+            >
+              6. 業務合約與交易憑證
+            </button>
+            <button 
+              @click="activeDocTab = 'amlScreening'"
+              class="px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+              :class="activeDocTab === 'amlScreening' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'"
+            >
+              7. AML/制裁/PEP檢核報告
+            </button>
+          </div>
+
+          <!-- Document Viewer Window -->
+          <div class="bg-slate-900 rounded-xl p-4 border border-slate-800 text-slate-100 font-mono text-xs shadow-inner">
+            <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800 text-slate-400">
+              <div class="flex items-center space-x-2">
+                <span class="w-3 h-3 rounded-full bg-rose-500/80"></span>
+                <span class="w-3 h-3 rounded-full bg-amber-500/80"></span>
+                <span class="w-3 h-3 rounded-full bg-emerald-500/80"></span>
+                <span class="ml-2 font-bold text-slate-300">
+                  SCAN_OCR_{{ activeDocTab.toUpperCase() }}_{{ currentCase.taxId }}.TXT
+                </span>
+              </div>
+              <div class="text-[11px] text-slate-400">
+                光學字元切分精準度：99.4% | 地端唯讀快取
+              </div>
+            </div>
+
+            <!-- Content of active document -->
+            <pre class="p-3 bg-slate-950/70 rounded-lg overflow-x-auto text-emerald-300/90 whitespace-pre-wrap leading-relaxed select-text font-mono border border-slate-800/80 max-h-[500px] custom-scrollbar">{{ currentCase.docs[activeDocTab] || '此案件未提供此獨立項目文件。' }}</pre>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- TAB 4: LOCAL AI ENGINE & PRIVACY SETTINGS -->
+      <section v-show="activeTab === 'settings'" class="space-y-6">
+        
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <div class="flex items-center space-x-3 pb-4 border-b border-slate-200">
+            <div class="w-10 h-10 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center">
+              <i data-lucide="shield-check" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <h2 class="text-lg font-bold text-slate-900">地端 AI 模型與金融資安隔離架構</h2>
+              <p class="text-xs text-slate-500">
+                銀行合規資通安全防護：滿足金管會「金融機構運用人工智慧 (AI) 核心原則」之隱私保護與資料本地化要求
+              </p>
+            </div>
+          </div>
+
+          <!-- Explanation Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-6 text-xs">
+            <div class="p-4 rounded-xl bg-blue-50 border border-blue-200">
+              <div class="flex items-center space-x-2 font-bold text-blue-900 mb-1.5">
+                <i data-lucide="lock" class="w-4 h-4 text-blue-700"></i>
+                <span>完全地端推論 (Edge / On-Premise)</span>
+              </div>
+              <p class="text-blue-950 leading-relaxed">
+                包含經濟部變更登記表、實質受益人自然人身分證號、401表營收金額與客戶採購合約等高機敏個資，均在本地端記憶體處理，絕不調用外部公共大模型 API。
+              </p>
+            </div>
+
+            <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+              <div class="flex items-center space-x-2 font-bold text-emerald-900 mb-1.5">
+                <i data-lucide="check-shield" class="w-4 h-4 text-emerald-700"></i>
+                <span>可解釋性與合規可審計性 (Explainable AI)</span>
+              </div>
+              <p class="text-emerald-950 leading-relaxed">
+                所有 24 項問項填表動作皆保留【判定依據 (Reasoning)】與【佐證引文 (Evidence Citation)】，供內稽內控人員及主管機關隨時查驗追溯。
+              </p>
+            </div>
+          </div>
+
+          <!-- AI Engine Mode Switcher -->
+          <div class="border border-slate-200 rounded-xl p-5 mb-6">
+            <h3 class="text-sm font-bold text-slate-800 mb-3">推論引擎模式選擇</h3>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              
+              <!-- Mode A: Built-in Local Engine -->
+              <div 
+                @click="aiEngineMode = 'builtin'"
+                class="border-2 rounded-xl p-4 cursor-pointer transition"
+                :class="aiEngineMode === 'builtin' ? 'border-blue-600 bg-blue-50/40' : 'border-slate-200 hover:border-slate-300'"
+              >
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center space-x-2">
+                    <i data-lucide="cpu" class="w-5 h-5 text-blue-600"></i>
+                    <span class="font-bold text-sm text-slate-900">內建在地神經抽取與規則引擎</span>
+                  </div>
+                  <span v-if="aiEngineMode === 'builtin'" class="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full font-semibold">當前使用中</span>
+                </div>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                  以高效在地規則圖譜與神經語義分析器運行，無需安裝額外驅動或大模型權重，開箱即用，零延遲輸出完整24題問項判定邏輯。
+                </p>
+              </div>
+
+              <!-- Mode B: Ollama Local LLM -->
+              <div 
+                @click="aiEngineMode = 'ollama'"
+                class="border-2 rounded-xl p-4 cursor-pointer transition"
+                :class="aiEngineMode === 'ollama' ? 'border-blue-600 bg-blue-50/40' : 'border-slate-200 hover:border-slate-300'"
+              >
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center space-x-2">
+                    <i data-lucide="server" class="w-5 h-5 text-purple-600"></i>
+                    <span class="font-bold text-sm text-slate-900">連接本地私有大模型 (Ollama)</span>
+                  </div>
+                  <span v-if="aiEngineMode === 'ollama'" class="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-semibold">已選取</span>
+                </div>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                  串接地端運行的 Ollama 或 vLLM (如 Taiwan-LLM, Llama 3, Qwen 2.5)，支援高自由度長文本深層分析。
+                </p>
+              </div>
+
+            </div>
+
+            <!-- Ollama Parameters (if mode is ollama) -->
+            <div v-if="aiEngineMode === 'ollama'" class="mt-4 pt-4 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">地端 Ollama API 端點</label>
+                <input 
+                  type="text" 
+                  v-model="ollamaUrl"
+                  class="w-full bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-800 font-mono"
+                  placeholder="http://localhost:11434"
+                >
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">模型名稱 (Model Tag)</label>
+                <input 
+                  type="text" 
+                  v-model="ollamaModel"
+                  class="w-full bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-800 font-mono"
+                  placeholder="llama3:latest"
+                >
+              </div>
+              <div class="flex items-end">
+                <button 
+                  @click="testOllama"
+                  class="w-full bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded text-xs font-semibold transition"
+                >
+                  測試地端連線
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Local AI Pipeline Diagram -->
+          <div class="border border-slate-200 rounded-xl p-5 bg-slate-50">
+            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">
+              地端 AI 審查推論流水線 (Pipeline Architecture)
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-5 gap-3 text-center text-xs">
+              <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mx-auto mb-2 font-bold">1</div>
+                <div class="font-bold text-slate-900 mb-0.5">安全記憶體載入</div>
+                <div class="text-slate-500 text-[11px]">OCR切分與脫敏快取</div>
+              </div>
+              <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mx-auto mb-2 font-bold">2</div>
+                <div class="font-bold text-slate-900 mb-0.5">命名實體辨識 NER</div>
+                <div class="text-slate-500 text-[11px]">統編/資本/負責人抽取</div>
+              </div>
+              <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mx-auto mb-2 font-bold">3</div>
+                <div class="font-bold text-slate-900 mb-0.5">UBO 股權穿透</div>
+                <div class="text-slate-500 text-[11px]">>25%法定自然人判定</div>
+              </div>
+              <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mx-auto mb-2 font-bold">4</div>
+                <div class="font-bold text-slate-900 mb-0.5">AML/制裁庫比對</div>
+                <div class="text-slate-500 text-[11px]">PEP/司法負面新聞過濾</div>
+              </div>
+              <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                <div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-2 font-bold">5</div>
+                <div class="font-bold text-slate-900 mb-0.5">填表與邏輯生成</div>
+                <div class="text-slate-500 text-[11px]">24項判定與佐證綁定</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- MODAL 1: ITEM DETAIL & REVIEWER AUDIT MODAL -->
+    <div v-if="showDetailModal && currentDetailItem" class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden transform transition-all">
+        
+        <!-- Modal Header -->
+        <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <span class="text-xs font-mono font-bold bg-blue-600 text-white px-2 py-0.5 rounded">
+              {{ currentDetailItem.id.toUpperCase() }}
+            </span>
+            <h3 class="text-base font-bold">{{ currentDetailItem.title }}</h3>
+          </div>
+          <button @click="showDetailModal = false" class="text-slate-400 hover:text-white transition">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- Modal Body Form -->
+        <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto text-xs">
+          
+          <!-- Category & Rule -->
+          <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <span class="text-slate-500 block mb-0.5">所屬章節：{{ currentDetailItem.sectionName }}</span>
+            <p class="text-slate-700 leading-relaxed">{{ currentDetailItem.desc }}</p>
+          </div>
+
+          <!-- Status Selector -->
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">審查判定狀態</label>
+            <div class="grid grid-cols-4 gap-2">
+              <button 
+                type="button"
+                @click="currentDetailItem.status = 'pass'"
+                class="py-2 rounded-lg border text-xs font-bold transition text-center"
+                :class="currentDetailItem.status === 'pass' ? 'bg-emerald-100 border-emerald-400 text-emerald-800' : 'bg-slate-50 border-slate-200 text-slate-600'"
+              >
+                符合 (Pass)
+              </button>
+              <button 
+                type="button"
+                @click="currentDetailItem.status = 'pending'"
+                class="py-2 rounded-lg border text-xs font-bold transition text-center"
+                :class="currentDetailItem.status === 'pending' ? 'bg-amber-100 border-amber-400 text-amber-800' : 'bg-slate-50 border-slate-200 text-slate-600'"
+              >
+                待補件 (Pending)
+              </button>
+              <button 
+                type="button"
+                @click="currentDetailItem.status = 'alert'"
+                class="py-2 rounded-lg border text-xs font-bold transition text-center"
+                :class="currentDetailItem.status === 'alert' ? 'bg-rose-100 border-rose-400 text-rose-800' : 'bg-slate-50 border-slate-200 text-slate-600'"
+              >
+                警訊紅旗 (Alert)
+              </button>
+              <button 
+                type="button"
+                @click="currentDetailItem.status = 'fail'"
+                class="py-2 rounded-lg border text-xs font-bold transition text-center"
+                :class="currentDetailItem.status === 'fail' ? 'bg-red-200 border-red-400 text-red-900' : 'bg-slate-50 border-slate-200 text-slate-600'"
+              >
+                不符合 (Fail)
+              </button>
+            </div>
+          </div>
+
+          <!-- Extracted Value -->
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">AI 萃取填寫數值</label>
+            <input 
+              type="text" 
+              v-model="currentDetailItem.value"
+              class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-800 font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            >
+          </div>
+
+          <!-- Reasoning -->
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">為什麼這麼填的邏輯 (Reasoning)</label>
+            <textarea 
+              v-model="currentDetailItem.reasoning"
+              rows="3"
+              class="w-full bg-slate-50 border border-slate-300 rounded-lg p-3 text-xs text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none leading-relaxed"
+            ></textarea>
+          </div>
+
+          <!-- Citation Quote -->
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">原始卷宗佐證引文 (Evidence Citation)</label>
+            <textarea 
+              v-model="currentDetailItem.citation"
+              rows="2"
+              class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-xs text-slate-700 font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none leading-relaxed"
+            ></textarea>
+          </div>
+
+          <!-- Deficiency Action -->
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">應辦補正處置要求 (若有缺失)</label>
+            <input 
+              type="text" 
+              v-model="currentDetailItem.deficiencyAction"
+              placeholder="例：要求客戶限期7日內補交經公認證之法人董事名冊"
+              class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            >
+          </div>
+
+          <!-- Auditor Note -->
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">經辦行員手動審查覆核註記 (Auditor Note)</label>
+            <input 
+              type="text" 
+              v-model="currentDetailItem.auditorNote"
+              placeholder="填寫經辦個人覆核意見或照會紀錄..."
+              class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            >
+          </div>
+
+          <!-- Verify Toggle -->
+          <div class="pt-2">
+            <label class="flex items-center space-x-2 cursor-pointer font-bold text-slate-800">
+              <input 
+                type="checkbox" 
+                v-model="currentDetailItem.verified"
+                class="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 border-slate-300 cursor-pointer"
+              >
+              <span>標記此問項為「已完成經辦審核覆核」</span>
+            </label>
+          </div>
+
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex items-center justify-end space-x-3">
+          <button 
+            type="button"
+            @click="showDetailModal = false"
+            class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-xs font-medium hover:bg-slate-100 transition"
+          >
+            取消
+          </button>
+          <button 
+            type="button"
+            @click="saveItemAudit"
+            class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-sm"
+          >
+            儲存審核結果
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- MODAL 2: DEFICIENCY NOTICE LETTER TO CUSTOMER -->
+    <div v-if="showDeficiencyLetterModal" class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl max-w-3xl w-full shadow-2xl border border-slate-200 overflow-hidden transform transition-all">
+        
+        <!-- Header -->
+        <div class="bg-amber-700 text-white px-6 py-4 flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <i data-lucide="mail-warning" class="w-5 h-5"></i>
+            <h3 class="text-base font-bold">企業金融開戶補正資料照會單 (正式公文範本)</h3>
+          </div>
+          <button @click="showDeficiencyLetterModal = false" class="text-amber-200 hover:text-white transition">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- Official Letter Content -->
+        <div class="p-8 text-xs text-slate-800 space-y-4 max-h-[75vh] overflow-y-auto font-sans leading-relaxed select-text">
+          <div class="border-b-2 border-slate-800 pb-3 text-center">
+            <h2 class="text-lg font-bold text-slate-900">臺灣商業銀行 營業部 函</h2>
+            <div class="text-xs text-slate-500 mt-1">發文字號：臺商銀企營字第 1150029810 號</div>
+          </div>
+
+          <div class="space-y-1">
+            <p><strong>受文者：</strong>{{ currentCase.companyName }} 負責人 台端</p>
+            <p><strong>發文日期：</strong>中華民國 115 年 10 月 02 日</p>
+            <p><strong>主旨：</strong>台端向本行申請辦理企業金融帳戶開立乙案，敬請於文到 7 個營業日內補正審核所需佐證文件，以利續行辦理客戶盡職調查程序，請查照。</p>
+          </div>
+
+          <div>
+            <p class="font-bold mb-2">說明：</p>
+            <ol class="list-decimal pl-5 space-y-2">
+              <li>依據金融監督管理委員會防制洗錢及打擊資恐辦法暨本行開戶審查準則辦理。</li>
+              <li>貴公司本次開戶經本行地端合規審查系統初核，尚有下列文件缺失或查核疑點需釐清補正：</li>
+            </ol>
+          </div>
+
+          <!-- Deficiency Items Table -->
+          <div class="border border-slate-300 rounded my-3 overflow-hidden">
+            <table class="min-w-full divide-y divide-slate-300 text-xs">
+              <thead class="bg-slate-100 text-slate-700 font-bold">
+                <tr>
+                  <th class="px-3 py-2 text-left w-16">項次</th>
+                  <th class="px-3 py-2 text-left w-44">查核缺失項目</th>
+                  <th class="px-3 py-2 text-left">應檢附補正文件與說明</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-200 bg-white">
+                <tr v-for="(item, idx) in pendingDeficiencyList" :key="item.id">
+                  <td class="px-3 py-2.5 font-bold text-center">{{ idx + 1 }}</td>
+                  <td class="px-3 py-2.5 font-semibold text-slate-900">{{ item.title }}</td>
+                  <td class="px-3 py-2.5 text-slate-700">
+                    <div>{{ item.deficiencyAction }}</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5">註記：{{ item.reasoning }}</div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div>
+            <p>三、敬請於民國 115 年 10 月 12 日前備妥上開文件親送或掛號寄至本行受理分行，逾期未補正者，本行依法得暫緩承作或予以註銷本次開戶申請。</p>
+            <p>四、如有任何疑問，請洽本案經辦行員李怡君（聯絡電話：02-2345-6789 分機 8391）。</p>
+          </div>
+
+          <!-- Signatures -->
+          <div class="pt-6 border-t border-slate-200 flex justify-between text-xs text-slate-600">
+            <div>經辦：李怡君</div>
+            <div>襄理：王建峰</div>
+            <div>分行經理：張世昌 (用印處)</div>
+          </div>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex items-center justify-between">
+          <span class="text-xs text-slate-500">可直接列印寄送或轉存 PDF</span>
+          <div class="flex items-center space-x-2">
+            <button 
+              type="button"
+              @click="printPage"
+              class="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition shadow-sm flex items-center space-x-1"
+            >
+              <i data-lucide="printer" class="w-4 h-4"></i>
+              <span>列印正式照會函</span>
+            </button>
+            <button 
+              type="button"
+              @click="showDeficiencyLetterModal = false"
+              class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-xs font-medium hover:bg-slate-100 transition"
+            >
+              關閉
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- MODAL 3: APPROVAL MEMORANDUM TO BRANCH/HQ MANAGEMENT -->
+    <div v-if="showApprovalMemoModal" class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl max-w-3xl w-full shadow-2xl border border-slate-200 overflow-hidden transform transition-all">
+        
+        <!-- Header -->
+        <div class="bg-blue-900 text-white px-6 py-4 flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <i data-lucide="file-signature" class="w-5 h-5"></i>
+            <h3 class="text-base font-bold">企金客戶盡職調查 (CDD/EDD) 審查意見簽呈</h3>
+          </div>
+          <button @click="showApprovalMemoModal = false" class="text-blue-300 hover:text-white transition">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- Official Internal Memo Content -->
+        <div class="p-8 text-xs text-slate-800 space-y-4 max-h-[75vh] overflow-y-auto font-sans leading-relaxed select-text">
+          <div class="border-b-2 border-slate-800 pb-3 text-center">
+            <h2 class="text-lg font-bold text-slate-900">臺灣商業銀行 企業金融業務簽呈</h2>
+            <div class="text-xs text-slate-500 mt-1">公文文號：簽字第 115-CDD-{{ currentCase.taxId }} 號</div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 pb-2 border-b border-slate-200">
+            <div><strong>主辦單位：</strong>企業金融部 營業部分行</div>
+            <div><strong>發文日期：</strong>民國 115 年 10 月 02 日</div>
+            <div><strong>受核對象：</strong>{{ currentCase.companyName }}</div>
+            <div><strong>統一編號：</strong>{{ currentCase.taxId }}</div>
+          </div>
+
+          <div>
+            <p><strong>主旨：</strong>檢陳「{{ currentCase.companyName }}」申請開立全功能企業存款帳戶之洗錢防制客戶盡職調查 (CDD) 審核意見與決策擬處案，呈請 鑒核。</p>
+          </div>
+
+          <div>
+            <p class="font-bold mb-1">說明：</p>
+            <ul class="list-disc pl-5 space-y-1.5">
+              <li><strong>背景簡述：</strong>{{ currentCase.summary }}</li>
+              <li><strong>地端AI綜合風險評定：</strong>綜合評定等級為【<span class="font-bold">{{ stats.overallRisk }}</span>】。</li>
+              <li><strong>問項審查統計：</strong>共檢驗 24 查核問項，其中符合 {{ stats.pass }} 項、待補件 {{ stats.pending }} 項、高風險紅旗 {{ stats.alert }} 項。</li>
+              <li><strong>實質受益人 (UBO) 狀況：</strong>{{ questions[7] ? questions[7].value : '依章程穿透完成' }}。</li>
+              <li><strong>營業與401納稅真實性：</strong>{{ questions[16] ? questions[16].value : '查核中' }}。</li>
+            </ul>
+          </div>
+
+          <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+            <p class="font-bold text-slate-900 mb-1">擬辦意見：</p>
+            <p class="text-slate-800 leading-relaxed font-semibold">
+              {{ questions[22] ? questions[22].value : '依規准駁' }}。
+            </p>
+            <p class="text-slate-600 mt-1">
+              理由：{{ questions[22] ? questions[22].reasoning : '依分行授權管理規章辦理。' }}
+            </p>
+          </div>
+
+          <!-- Sign Off Grid -->
+          <div class="pt-8 border-t border-slate-200 grid grid-cols-3 gap-4 text-center text-xs">
+            <div class="border border-slate-300 rounded p-3 h-20 flex flex-col justify-between">
+              <span class="text-slate-500">承辦經辦</span>
+              <span class="font-bold">李怡君</span>
+            </div>
+            <div class="border border-slate-300 rounded p-3 h-20 flex flex-col justify-between">
+              <span class="text-slate-500">審核襄理</span>
+              <span class="font-bold">王建峰</span>
+            </div>
+            <div class="border border-slate-300 rounded p-3 h-20 flex flex-col justify-between">
+              <span class="text-slate-500">批示主管 (分行經理/總行CCO)</span>
+              <span class="font-bold">張世昌 經理</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex items-center justify-end space-x-3">
+          <button 
+            type="button"
+            @click="printPage"
+            class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-sm flex items-center space-x-1"
+          >
+            <i data-lucide="printer" class="w-4 h-4"></i>
+            <span>列印簽呈意見書</span>
+          </button>
+          <button 
+            type="button"
+            @click="showApprovalMemoModal = false"
+            class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-xs font-medium hover:bg-slate-100 transition"
+          >
+            關閉
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- MODAL 4: CUSTOM UPLOAD & SCANNED OCR TEXT INPUT -->
+    <div v-if="showCustomUploadModal" class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden transform transition-all">
+        
+        <!-- Header -->
+        <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <i data-lucide="file-up" class="w-5 h-5 text-blue-400"></i>
+            <h3 class="text-base font-bold">讀取開戶文字資料 / 掃描 OCR 文字填表</h3>
+          </div>
+          <button @click="showCustomUploadModal = false" class="text-slate-400 hover:text-white transition">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- Body Form -->
+        <div class="p-6 space-y-4 text-xs">
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="font-bold text-slate-700">請貼上開戶登記表、401表或掃描文字內容：</label>
+              <span class="text-slate-400">支援繁中商工登記表 / 401申報表 / 股東名冊</span>
+            </div>
+            <textarea 
+              v-model="customText"
+              rows="9"
+              placeholder="例：
+【經濟部商業司 公司變更登記事項表】
+統一編號：88390211
+公司名稱：台灣智能聯網科技股份有限公司
+公司所在地：台北市內湖區瑞光路500號3樓
+代表人姓名：何志偉
+資本總額：新臺幣 30,000,000 元
+董監事名單：何志偉 (持股 60%)、王雅婷 (持股 40%)
+..."
+              class="w-full bg-slate-50 border border-slate-300 rounded-lg p-3 text-xs text-slate-800 font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none leading-relaxed select-text"
+            ></textarea>
+          </div>
+
+          <!-- Quick Template Fill Buttons -->
+          <div>
+            <span class="text-slate-500 font-semibold block mb-1">或快速套用真實企金情境範本：</span>
+            <div class="flex flex-wrap gap-2">
+              <button 
+                type="button"
+                @click="customText = `【經濟部商業司 設立登記事項表】\n統一編號：64920188\n公司名稱：藍海數位跨境行銷有限公司\n公司所在地：台北市信義區忠孝東路五段1號（極光創客商務中心）\n代表人姓名：郭展銘\n資本總額：新臺幣 500,000 元\n所營事業：F401010 國際貿易業、I301010 資訊軟體服務業、虛擬通貨代操諮詢\n股東結構：郭展銘（持股 70%）、SEYCHELLES BLUE TECH LTD.（塞席爾境外控股 30%）\n近半年營業稅401表申報：尚未完成首期申報\n負責人為現任立法委員特助`"
+                class="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium"
+              >
+                帶入範例：新創電商 (境外股權+PEP警訊)
+              </button>
+              <button 
+                type="button"
+                @click="customText = `【經濟部商業司 公司變更登記事項表】\n統一編號：12884901\n公司名稱：祥盛五金精密工業股份有限公司\n公司所在地：彰化縣和美鎮彰美路三段120號\n代表人姓名：許祥盛\n資本總額：新臺幣 45,000,000 元\n實收資本額：新臺幣 45,000,000 元\n核准設立日期：民國89年04月12日\n所營事業：CA02990 其他金屬製品製造業\n董監事：董事長許祥盛（持股65%）、董事許清文（持股25%）、監察人許林秀玉（持股10%）\n近一年401營業額：新台幣 240,000,000 元，無欠稅紀錄\n廠房為自有土地，已完成現場場勘訪視`"
+                class="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium"
+              >
+                帶入範例：老牌精密製造業 (優質合格件)
+              </button>
+            </div>
+          </div>
+
+          <!-- Metadata Override -->
+          <div class="grid grid-cols-2 gap-3 pt-2">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">企業名稱 (自動辨識可留空)</label>
+              <input 
+                type="text" 
+                v-model="customCompanyName"
+                placeholder="由在地AI自動從文字中抽取"
+                class="w-full bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-800"
+              >
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">統一編號 (自動辨識可留空)</label>
+              <input 
+                type="text" 
+                v-model="customTaxId"
+                placeholder="由在地AI自動擷取8碼統編"
+                class="w-full bg-slate-50 border border-slate-300 rounded px-2.5 py-1.5 text-xs text-slate-800 font-mono"
+              >
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex items-center justify-between">
+          <span class="text-xs text-slate-500">🔒 全程於瀏覽器在地解析，保證營業機密不外洩</span>
+          <div class="flex items-center space-x-2">
+            <button 
+              type="button"
+              @click="showCustomUploadModal = false"
+              class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-xs font-medium hover:bg-slate-100 transition"
+            >
+              取消
+            </button>
+            <button 
+              type="button"
+              @click="processCustomText"
+              class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-sm flex items-center space-x-1.5"
+            >
+              <i data-lucide="sparkles" class="w-4 h-4"></i>
+              <span>啟動地端 AI 抽取與填表</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div 
+      v-if="showToast" 
+      class="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-slate-700 flex items-center space-x-2 text-xs transition transform duration-200 ease-out"
+    >
+      <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400 flex-shrink-0"></i>
+      <span>{{ toastMessage }}</span>
+    </div>
+
+    <!-- Application Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 mt-auto no-print">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+        <div class="flex items-center space-x-2">
+          <span class="font-bold text-slate-700">臺灣商業銀行 企業金融處</span>
+          <span>© 2026 CDD/KYC Intelligent Local Agent. All rights reserved.</span>
+        </div>
+        <div class="flex items-center space-x-4">
+          <span>防制洗錢遵循等級：金管銀法字最高標準</span>
+          <span>地端神經推論版本：v2.4-Edge</span>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
