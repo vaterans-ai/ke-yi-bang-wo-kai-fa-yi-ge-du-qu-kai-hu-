@@ -1359,7 +1359,8 @@ createApp({
       processCustomText,
       printPage,
       exportChecklistJson,
-      triggerToast
+      triggerToast,
+      getQuestion
     };
   }
 }).mount('#app');

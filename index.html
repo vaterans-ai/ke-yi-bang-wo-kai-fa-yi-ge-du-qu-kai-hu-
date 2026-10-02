@@ -624,7 +624,7 @@
                   {{ stats.overallRisk }}
                 </span>
                 <p class="text-xs text-slate-600 leading-relaxed">
-                  {{ questions[20] ? questions[20].reasoning : '經地端AI洗錢防制規則模組交叉計算全案風險指標。' }}
+                  {{ getQuestion('q6_1').reasoning || '經地端AI洗錢防制規則模組交叉計算全案風險指標。' }}
                 </p>
               </div>
 
@@ -632,10 +632,10 @@
               <div class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
                 <span class="text-xs text-slate-500 block mb-1">開戶資格審查擬處意見</span>
                 <div class="text-base font-bold mb-2" :class="stats.alert > 0 ? 'text-rose-700' : (stats.pending > 0 ? 'text-amber-700' : 'text-emerald-700')">
-                  {{ questions[22] ? questions[22].value : '【核准開戶】' }}
+                  {{ getQuestion('q6_3').value || '【核准開戶】' }}
                 </div>
                 <p class="text-xs text-slate-600 leading-relaxed">
-                  {{ questions[22] ? questions[22].reasoning : '依內部規章評估開戶適格性。' }}
+                  {{ getQuestion('q6_3').reasoning || '依內部規章評估開戶適格性。' }}
                 </p>
               </div>
 
@@ -643,10 +643,10 @@
               <div class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
                 <span class="text-xs text-slate-500 block mb-1">法定案件核決層級</span>
                 <div class="text-sm font-bold text-slate-800 mb-2">
-                  {{ questions[23] ? questions[23].value : '分行二級主管 (襄理/副理) 決行' }}
+                  {{ getQuestion('q6_4').value || '分行二級主管 (襄理/副理) 決行' }}
                 </div>
                 <p class="text-xs text-slate-600 leading-relaxed">
-                  {{ questions[23] ? questions[23].reasoning : '依分層負責核決權限表送核。' }}
+                  {{ getQuestion('q6_4').reasoning || '依分層負責核決權限表送核。' }}
                 </p>
               </div>
             </div>
