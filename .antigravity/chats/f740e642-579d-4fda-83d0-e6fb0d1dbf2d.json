@@ -52,6 +52,18 @@
       "created_at": "2026-10-02T12:36:59.254Z",
       "sender": "ios",
       "is_cancelled": false
+    },
+    {
+      "id": "9cdb4f92-1e53-46f7-b3b3-1731ee55d101",
+      "role": "agent",
+      "content": "在企業金融（企金）開戶審查系統中，為了符合金管會資安指引與「金融機敏資料不出境、隔離外網（Air-Gapped）」的要求，**地端 AI 模型權重檔（Model Weights）的實體存放位置**會依照您的部署架構分為以下三種常見層級：\n\n---\n\n### 一、常見三種部署情境與實體儲存路徑\n\n#### 1. 行員個人工作站 / 臨櫃 PC（Edge 本地端 Ollama 模式）\n若是在審查員本機電腦運行地端推論服務（如 Ollama），模型檔案預設存放在作業系統的本機使用者目錄下：\n\n| 作業系統 | 預設實體存放路徑 |\n| :--- | :--- |\n| **Windows 10/11** | `C:\\Users\\<您的使用者名稱>\\.ollama\\models\\` |\n| **macOS** | `~/.ollama/models/`（即 `/Users/<使用者名稱>/.ollama/models/`） |\n| **Linux** | `/usr/share/ollama/.ollama/models/` 或 `~/.ollama/models/` |\n\n> 💡 **企業 IT 自訂目錄技巧**：  \n> 若銀行 IT 規定模型不得佔用 C 槽系統碟，可設定系統環境變數指向專用加密碟或 D 槽：  \n> - Windows: `setx OLLAMA_MODELS \"D:\\BankLocalAI\\models\"`  \n> - Linux/macOS: `export OLLAMA_MODELS=\"/data/bank-models\"`\n\n---\n\n#### 2. 純瀏覽器前端地端快取（In-Browser 零安裝模式）\n若使用前端 WebAssembly / WebLLM 技術讓網頁直接在瀏覽器記憶體內運算：\n- **實體存放機制**：儲存在瀏覽器沙箱的 **`IndexedDB`** 或 **`CacheStorage`** 本機儲存區。\n- **Windows 實體路徑**：`%LOCALAPPDATA%\\Google\\Chrome\\User Data\\Default\\IndexedDB\\`\n- **特色**：僅在第一次載入時需要緩存量化權重，之後即**永久保存在行員電腦本機硬碟**，完全離線運行，重新整理網頁或斷網皆可使用。\n\n---\n\n#### 3. 銀行私有機房 / 內部實體隔離伺服器（Enterprise Air-Gapped Cluster）\n若是大型商業銀行的企金總行系統，通常會有內部專用推論伺服器或私有雲：\n- **高速 NVMe 實體目錄**：如 `/data/bank-models/kyc-extractor/` 或 `/mnt/nas/llm-weights/`。\n- **內網私有物件儲存庫（Air-Gapped MinIO / Ceph）**：`s3://internal-kyc-models/v2.4/taide-lx-7b.gguf`\n- **容器化部署（Kubernetes）**：模型被掛載為 `PersistentVolume (PV)`，只對分行內部專網（Intranet）暴露 `http://internal-cdd-ai.bank.local:11434` 端點，完全阻絕外網連線。\n\n---\n\n### 二、儲存的模型檔案格式與佔用空間\n\n在企金審查系統中，地端通常會存放兩種互補的模型檔案：\n\n1. **主推論大模型（GGUF 格式）**：\n   - **常用模型**：`Taiwan-LLM-7B-Chat.Q4_K_M.gguf`、`Llama-3-Taiwan-8B.Q4_K_M.gguf` 或 `Qwen2.5-7B-Instruct.gguf`。\n   - **容量大小**：約 **3.8 GB ~ 4.8 GB**。\n   - **優點**：採用 4-bit 量化，即使在沒有高階 GPU 的一般行員商務電腦（16GB RAM）上，以純 CPU + 記憶體也能秒級推論。\n2. **輕量實體辨識與向量模型（ONNX / SafeTensors 格式）**：\n   - **用途**：即時切分 OCR 文字、抓取統一編號、資本額、公司名稱等命名實體（NER）。\n   - **容量大小**：約 **120 MB ~ 350 MB**，非常輕巧，可直接快取於前端。\n\n---\n\n### 三、已更新至線上系統\n\n我們已將這份**「地端模型實體存放路徑與架構配置指引」**直接整合進網頁的 **【地端 AI 引擎設定】（第四個分頁）** 中，您可以在系統介面上直觀檢視不同作業系統的目錄與規格對照：\n\n👉 **[查看企金審查系統與地端模型設定](https://antigravity.luch.dev/site/08c62cf8-e66c-4fe8-a760-873da958e189/72a2702f8f4a15a1370de39e/)**\n\n所有修改均已自動同步並儲存完成！",
+      "status": "completed",
+      "model": "gemini-3.8-flash-high",
+      "client_type": "gemini-bridge",
+      "parent_message_id": "9ac36cf0-3d3a-4fa1-a277-386ceeec412f",
+      "created_at": "2026-10-02T12:38:07.307Z",
+      "sender": "macOS",
+      "is_cancelled": false
     }
   ]
 }
