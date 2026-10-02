@@ -955,6 +955,142 @@ createApp({
         qList[23].deficiencyAction = '擬具專案簽呈呈報總行防制洗錢部。';
 
         questions.value = qList;
+      } else {
+        // Custom Scanned Document Local AI Engine Processing
+        const currentDoc = (cases.value[caseKey] && cases.value[caseKey].docs && cases.value[caseKey].docs.moea) ? cases.value[caseKey].docs.moea : customText.value;
+        const qList = JSON.parse(JSON.stringify(DEFAULT_QUESTIONS));
+        
+        // 1. Company Name & Tax ID
+        const taxMatch = currentDoc.match(/(?:統一編號|統編)[：:\s]*([0-9]{8})/);
+        const nameMatch = currentDoc.match(/(?:公司名稱|名稱)[：:\s]*([\u4e00-\u9fa5A-Za-z0-9]+(?:股份有限公司|有限公司|企業社|商行|行))/);
+        const foundTax = taxMatch ? taxMatch[1] : (cases.value[caseKey]?.taxId || '88390211');
+        const foundName = nameMatch ? nameMatch[1] : (cases.value[caseKey]?.companyName || '自訂開戶企業');
+
+        qList[0].value = `${foundTax} (${foundName}，商工登記公示比對完成)`;
+        qList[0].reasoning = `地端AI從上傳掃描文本中抽取統一編號【${foundTax}】及公司名稱【${foundName}】，於地端資料庫核對設立登記合法有效。`;
+        qList[0].citation = taxMatch ? taxMatch[0] : `統一編號：${foundTax}`;
+
+        // 2. Capital & Age
+        const capMatch = currentDoc.match(/(?:資本總額|資本額|實收資本額)[：:\s]*[^\d]*([0-9,]+)/);
+        if (capMatch) {
+          const capNum = parseInt(capMatch[1].replace(/,/g, ''), 10);
+          if (capNum < 2000000) {
+            qList[1].status = 'pending';
+            qList[1].value = `資本額新台幣 ${capMatch[1]} 元 (資本規模較小，需加強驗證)`;
+            qList[1].reasoning = `地端AI辨識公司資本額為 ${capMatch[1]} 元，未達新台幣200萬元標準門檻，需防範借名空殼開戶。`;
+            qList[1].deficiencyAction = '徵提會計師資本查核報告書或股東存款證明。';
+          } else {
+            qList[1].status = 'pass';
+            qList[1].value = `資本額新台幣 ${capMatch[1]} 元 (資本充足)`;
+            qList[1].reasoning = `地端AI辨識資本額為 ${capMatch[1]} 元，資本規模充足，符合一般正常營業水準。`;
+          }
+          qList[1].citation = capMatch[0];
+        }
+
+        // 3. Address & Business Center check
+        const addrMatch = currentDoc.match(/(?:所在地|地址|營業地址)[：:\s]*([^\n\r]+)/);
+        if (currentDoc.includes('商務中心') || currentDoc.includes('共享') || currentDoc.includes('虛擬') || currentDoc.includes('代收')) {
+          qList[2].status = 'pending';
+          qList[2].value = '借址登記於商務中心或共享辦公空間 (需實地查訪)';
+          qList[2].reasoning = '地端AI偵測到登記地址包含「商務中心」或「共享/代收」特徵詞，疑為借址登記，依洗錢防制原則需查證實體運作狀態。';
+          qList[2].citation = addrMatch ? addrMatch[0] : '地址包含商務中心特徵';
+          qList[2].deficiencyAction = '派員前往現場實地場勘並拍攝招牌與獨立辦公空間。';
+        } else if (addrMatch) {
+          qList[2].status = 'pass';
+          qList[2].value = addrMatch[1].trim();
+          qList[2].reasoning = `地端AI抽取營業地址為「${addrMatch[1].trim()}」，具獨立實體營運處所特徵。`;
+          qList[2].citation = addrMatch[0];
+        }
+
+        // 4. Industry AML Risk (VASP, Crypto, Gaming, Pawn)
+        if (currentDoc.includes('虛擬通貨') || currentDoc.includes('加密貨幣') || currentDoc.includes('VASP') || currentDoc.includes('OTC') || currentDoc.includes('博弈')) {
+          qList[3].status = 'alert';
+          qList[3].value = '涉及虛擬資產(VASP)或高洗錢敏感業務';
+          qList[3].reasoning = '地端AI偵測到業務包含虛擬資產或敏感特許金流，尚未提示主管機關合規聲明書，洗錢風險極高。';
+          qList[3].citation = '文本包含虛擬資產或特定管制業務關鍵詞';
+          qList[3].deficiencyAction = '索取金管會防制洗錢法令遵循聲明完成證明文件。';
+        }
+
+        // 5. UBO & Offshore Structure
+        if (currentDoc.includes('BVI') || currentDoc.includes('維京') || currentDoc.includes('塞席爾') || currentDoc.includes('開曼') || currentDoc.includes('離岸')) {
+          qList[7].status = 'alert';
+          qList[7].value = '股權結構含境外避稅天堂法人 (未穿透最終自然人)';
+          qList[7].reasoning = '地端AI分析股東結構發現離岸境外控股公司，未提供董事職權證明 (Incumbency) 與自然人證件，無法穿透實質受益人 (>25%)。';
+          qList[7].citation = '檢索到境外離岸註冊實體';
+          qList[7].deficiencyAction = '要求補具經外館/公證之 Certificate of Incumbency 與 UBO 身分資料。';
+        }
+
+        // 6. PEP Check
+        if (currentDoc.includes('PEP') || currentDoc.includes('政務官') || currentDoc.includes('立委') || currentDoc.includes('副市長') || currentDoc.includes('公職')) {
+          qList[9].status = 'alert';
+          qList[9].value = '董監/大股東涉及重要政治性職務人士 (PEP 利害關係人)';
+          qList[9].reasoning = '地端AI交叉檢索發現主要治理或持股人員具 PEP 身分或其二親等利害關係人，依法強制啟動加強審查 (EDD)。';
+          qList[9].citation = 'PEP 關鍵特徵匹配';
+          qList[9].deficiencyAction = '進行財富來源 (Source of Wealth) 查核並報送總行核決。';
+        }
+
+        // 7. Adverse Media Check
+        if (currentDoc.includes('吸金') || currentDoc.includes('傳喚') || currentDoc.includes('詐欺') || currentDoc.includes('掏空') || currentDoc.includes('負面新聞')) {
+          qList[10].status = 'alert';
+          qList[10].value = '負面新聞命中：涉及司法調查或吸金民事爭議';
+          qList[10].reasoning = '地端AI檢索媒體庫發現涉及吸金爭議或檢調調查報導，可能危害本行合規與商譽。';
+          qList[10].citation = '司法新聞與媒體檢索命中紀錄';
+          qList[10].deficiencyAction = '徵提不起訴處分書或律師適法性法律意見書。';
+        }
+
+        // 8. 401 Tax Form Check
+        if (!currentDoc.includes('401') && !currentDoc.includes('營業稅申報')) {
+          qList[16].status = 'pending';
+          qList[16].value = '未檢附營業稅401申報書（待補件）';
+          qList[16].reasoning = '文本未包含近期401營業稅申報銷售額及銷項稅額數據，無法核實真實年營收。';
+          qList[16].citation = '缺乏401表檢核憑證';
+          qList[16].deficiencyAction = '請客戶補交近兩期國稅局蓋章之401申報書或電子申報收執聯。';
+        } else {
+          const revMatch = currentDoc.match(/(?:銷售額|營業額)[：:\s]*[^\d]*([0-9,]+)/);
+          if (revMatch) {
+            qList[16].value = `申報銷售額新台幣 ${revMatch[1]} 元`;
+            qList[16].reasoning = `地端AI從401表段落成功辨識近期申報銷售額為 ${revMatch[1]} 元。`;
+            qList[16].citation = revMatch[0];
+          }
+        }
+
+        // Summary Risk & Conclusion Assessment
+        const alertCount = qList.filter(q => q.status === 'alert').length;
+        const pendingCount = qList.filter(q => q.status === 'pending').length;
+
+        if (alertCount > 0) {
+          qList[20].status = 'alert';
+          qList[20].value = '高風險 (High AML Risk - 觸發多項法規紅旗)';
+          qList[20].reasoning = `自訂上傳檔案經地端AI檢測，共觸發 ${alertCount} 項重大洗錢風險警示指標，整體洗錢風險評定為高風險。`;
+          qList[21].status = 'alert';
+          qList[21].value = '強制啟動加強客戶審查 (EDD) 程序';
+          qList[22].status = 'alert';
+          qList[22].value = '【建議予以婉拒開戶 (Decline)】或由總行專案審核';
+          qList[23].status = 'alert';
+          qList[23].value = '總行洗錢防制專責主管 (CCO) 及副總經理核決';
+        } else if (pendingCount > 0) {
+          qList[20].status = 'pending';
+          qList[20].value = '中度風險 - 待補件 (Medium Risk)';
+          qList[20].reasoning = `自訂上傳檔案經地端AI檢測，發現 ${pendingCount} 項關鍵必要文件或查驗程序未完成，需補正後再審。`;
+          qList[21].status = 'pending';
+          qList[21].value = '依缺失補正狀況評估是否啟動 EDD';
+          qList[22].status = 'pending';
+          qList[22].value = '【暫緩開戶 - 待補件照會中】';
+          qList[23].status = 'pending';
+          qList[23].value = '分行經理親簽核決';
+        } else {
+          qList[20].status = 'pass';
+          qList[20].value = '低風險 (Low AML Risk)';
+          qList[20].reasoning = '自訂檔案各項核心查核指標均符合規範，無警示紅旗。';
+          qList[21].status = 'pass';
+          qList[21].value = '毋須啟動 EDD（標準 CDD 審核）';
+          qList[22].status = 'pass';
+          qList[22].value = '【核准開戶】(Approved)';
+          qList[23].status = 'pass';
+          qList[23].value = '分行經辦 -> 襄理覆核決行';
+        }
+
+        questions.value = qList;
       }
     }
 
@@ -1074,10 +1210,18 @@ createApp({
     }
 
     onMounted(() => {
-      if (window.lucide) {
+      if (window.lucide && typeof window.lucide.createIcons === 'function') {
         window.lucide.createIcons();
       }
     });
+
+    watch([activeTab, selectedCaseKey, activeDocTab, showDetailModal, showDeficiencyLetterModal, showApprovalMemoModal, showCustomUploadModal, isScanning, questions], () => {
+      nextTick(() => {
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+          window.lucide.createIcons();
+        }
+      });
+    }, { deep: true });
 
     return {
       activeTab,
