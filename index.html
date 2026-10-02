@@ -1353,18 +1353,18 @@
               <li><strong>背景簡述：</strong>{{ currentCase.summary }}</li>
               <li><strong>地端AI綜合風險評定：</strong>綜合評定等級為【<span class="font-bold">{{ stats.overallRisk }}</span>】。</li>
               <li><strong>問項審查統計：</strong>共檢驗 24 查核問項，其中符合 {{ stats.pass }} 項、待補件 {{ stats.pending }} 項、高風險紅旗 {{ stats.alert }} 項。</li>
-              <li><strong>實質受益人 (UBO) 狀況：</strong>{{ questions[7] ? questions[7].value : '依章程穿透完成' }}。</li>
-              <li><strong>營業與401納稅真實性：</strong>{{ questions[16] ? questions[16].value : '查核中' }}。</li>
+              <li><strong>實質受益人 (UBO) 狀況：</strong>{{ getQuestion('q2_3').value || '依章程穿透完成' }}。</li>
+              <li><strong>營業與401納稅真實性：</strong>{{ getQuestion('q5_1').value || '查核中' }}。</li>
             </ul>
           </div>
 
           <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
             <p class="font-bold text-slate-900 mb-1">擬辦意見：</p>
             <p class="text-slate-800 leading-relaxed font-semibold">
-              {{ questions[22] ? questions[22].value : '依規准駁' }}。
+              {{ getQuestion('q6_3').value || '依規准駁' }}。
             </p>
             <p class="text-slate-600 mt-1">
-              理由：{{ questions[22] ? questions[22].reasoning : '依分行授權管理規章辦理。' }}
+              理由：{{ getQuestion('q6_3').reasoning || '依分行授權管理規章辦理。' }}
             </p>
           </div>
 
