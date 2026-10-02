@@ -1026,7 +1026,7 @@
           </div>
 
           <!-- Local AI Pipeline Diagram -->
-          <div class="border border-slate-200 rounded-xl p-5 bg-slate-50">
+          <div class="border border-slate-200 rounded-xl p-5 bg-slate-50 mb-6">
             <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">
               地端 AI 審查推論流水線 (Pipeline Architecture)
             </h3>
@@ -1057,6 +1057,106 @@
                 <div class="text-slate-500 text-[11px]">24項判定與佐證綁定</div>
               </div>
             </div>
+          </div>
+
+          <!-- Model Storage Paths & Physical Directory Guide -->
+          <div class="border border-slate-200 rounded-xl p-5 bg-white">
+            <div class="flex items-center space-x-2 mb-3">
+              <i data-lucide="hard-drive" class="w-5 h-5 text-blue-600"></i>
+              <h3 class="text-sm font-bold text-slate-800">
+                地端模型實體存放路徑與架構配置指引 (Model Physical Storage Directory)
+              </h3>
+            </div>
+            <p class="text-xs text-slate-600 mb-4 leading-relaxed">
+              在銀行企業金融落地部署中，為落實「金融機敏資料不出境、隔離外網 (Air-Gapped)」原則，地端模型權重檔（Model Weights）依照不同部署架構，存放於以下指定實體路徑：
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              
+              <!-- Path 1: Workstation / Edge PC -->
+              <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                <div class="flex items-center justify-between font-bold text-slate-900">
+                  <span class="flex items-center space-x-1.5">
+                    <i data-lucide="laptop" class="w-4 h-4 text-indigo-600"></i>
+                    <span>行員終端 PC (Ollama)</span>
+                  </span>
+                  <span class="text-[10px] px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 font-mono">Edge Workstation</span>
+                </div>
+                <div class="text-slate-600 text-[11px]">
+                  <strong>預設存放目錄：</strong>
+                  <ul class="list-disc pl-4 space-y-1 mt-1 font-mono text-slate-700">
+                    <li><span class="text-slate-400">Win:</span> C:\Users\%USER%\.ollama\models\</li>
+                    <li><span class="text-slate-400">Mac:</span> ~/.ollama/models/</li>
+                    <li><span class="text-slate-400">Linux:</span> /usr/share/ollama/.ollama/models/</li>
+                  </ul>
+                </div>
+                <div class="bg-white p-2 rounded border border-slate-200 text-[11px] text-slate-600">
+                  <strong>自訂儲存路徑變數：</strong><br>
+                  <code class="text-blue-700 font-mono">OLLAMA_MODELS=D:\BankAI\models</code>
+                </div>
+              </div>
+
+              <!-- Path 2: Browser Local Cache -->
+              <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                <div class="flex items-center justify-between font-bold text-slate-900">
+                  <span class="flex items-center space-x-1.5">
+                    <i data-lucide="globe" class="w-4 h-4 text-emerald-600"></i>
+                    <span>純前端地端快取 (In-Browser)</span>
+                  </span>
+                  <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono">Zero Install</span>
+                </div>
+                <div class="text-slate-600 text-[11px]">
+                  <strong>瀏覽器沙箱實體路徑：</strong>
+                  <ul class="list-disc pl-4 space-y-1 mt-1 font-mono text-slate-700">
+                    <li>IndexedDB: /webllm-cache/</li>
+                    <li>CacheStorage: /models/v2/</li>
+                    <li>Chrome: %LOCALAPPDATA%\Google\Chrome\User Data\Default\IndexedDB\</li>
+                  </ul>
+                </div>
+                <div class="bg-white p-2 rounded border border-slate-200 text-[11px] text-slate-600">
+                  <strong>特色：</strong>僅首次載入分塊權重，永久快取於本機 SSD，完全離線推論。
+                </div>
+              </div>
+
+              <!-- Path 3: Enterprise Air-Gapped Cluster -->
+              <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                <div class="flex items-center justify-between font-bold text-slate-900">
+                  <span class="flex items-center space-x-1.5">
+                    <i data-lucide="database" class="w-4 h-4 text-purple-600"></i>
+                    <span>銀行私有機房 (Air-Gapped)</span>
+                  </span>
+                  <span class="text-[10px] px-2 py-0.5 rounded bg-purple-100 text-purple-800 font-mono">Enterprise Cluster</span>
+                </div>
+                <div class="text-slate-600 text-[11px]">
+                  <strong>企業伺服器掛載目錄：</strong>
+                  <ul class="list-disc pl-4 space-y-1 mt-1 font-mono text-slate-700">
+                    <li>/data/bank-models/kyc-agent/</li>
+                    <li>/mnt/nvme-pool/llm-weights/</li>
+                    <li>MinIO: s3://internal-kyc-models/</li>
+                  </ul>
+                </div>
+                <div class="bg-white p-2 rounded border border-slate-200 text-[11px] text-slate-600">
+                  <strong>資安管控：</strong>以 K8s PersistentVolume 掛載，金鑰加密與權限嚴格控管。
+                </div>
+              </div>
+
+            </div>
+
+            <!-- File Format & Model Spec Table -->
+            <div class="mt-4 pt-4 border-t border-slate-200">
+              <h4 class="text-xs font-bold text-slate-700 mb-2">模型檔案格式與容量規格參考</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
+                <div class="flex items-start space-x-2 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                  <span class="font-bold text-blue-700 font-mono flex-shrink-0">GGUF (Q4_K_M)：</span>
+                  <span class="text-slate-600">主模型權重（如 Taiwan-LLM-7B / Llama 3 8B），容量約 3.8GB ~ 4.6GB，可在行員 16GB RAM PC 上純 CPU 順暢推論。</span>
+                </div>
+                <div class="flex items-start space-x-2 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                  <span class="font-bold text-emerald-700 font-mono flex-shrink-0">ONNX / SafeTensors：</span>
+                  <span class="text-slate-600">輕量命名實體辨識 (NER) 與嵌入模型（如 bge-small / RoBERTa-tw），容量約 120MB ~ 350MB，適合即時嵌入於瀏覽器。</span>
+                </div>
+              </div>
+            </div>
+
           </div>
 
         </div>
